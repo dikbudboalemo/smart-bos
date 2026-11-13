@@ -1,1273 +1,1455 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SMART-BOS — Sistem Manajemen Administrasi Rekonsiliasi Terpadu BOS</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SMART-BOS — Dinas Pendidikan dan Kebudayaan Kab. Boalemo</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet">
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
     body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #f1f5f9; color: #0f172a; }
-    .glass-card { background: #ffffff; border: 1px solid #e2e8f0; box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05); }
-    .num-input {
-      width: 100%; text-align: right; padding: 0.45rem 0.65rem; border-radius: 0.5rem;
-      border: 1px solid #cbd5e1; font-variant-numeric: tabular-nums; font-weight: 700;
-      font-size: 0.85rem; transition: all 0.15s ease; background: #ffffff; color: #0f172a;
-    }
-    .num-input:focus { outline: none; border-color: #0B4F9F; box-shadow: 0 0 0 3px rgba(11, 79, 159, 0.15); }
-    .num-input:disabled { background: #f8fafc; color: #64748b; cursor: not-allowed; }
-    .tab-pill-active { background: linear-gradient(135deg, #0B4F9F 0%, #0284C7 100%); color: #ffffff !important; box-shadow: 0 4px 14px rgba(11, 79, 159, 0.28); }
-    .loader-spin {
-      border: 3px solid #e2e8f0; border-top: 3px solid #0B4F9F; border-right: 3px solid #F59E0B;
-      border-radius: 50%; width: 28px; height: 28px; animation: spin 0.75s linear infinite;
-    }
-    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    @keyframes floatSlow {
-      0%, 100% { transform: translateY(0px); }
-      50% { transform: translateY(-5px); }
+
+    /* Animasi Logo Mengambang & Denyut Cahaya pada Halaman Login */
+    @keyframes floatLogo {
+      0%, 100% { transform: translateY(0px) scale(1); }
+      50% { transform: translateY(-8px) scale(1.03); }
     }
     @keyframes pulseGlow {
-      0%, 100% { opacity: 0.55; transform: scale(1); }
-      50% { opacity: 0.95; transform: scale(1.06); }
+      0%, 100% { box-shadow: 0 10px 25px -5px rgba(251, 191, 36, 0.35), 0 0 0 0 rgba(251, 191, 36, 0.4); }
+      50% { box-shadow: 0 18px 35px -5px rgba(251, 191, 36, 0.55), 0 0 0 8px rgba(251, 191, 36, 0); }
     }
-    .logo-float { animation: floatSlow 4s ease-in-out infinite; }
-    .logo-aura { animation: pulseGlow 3.5s ease-in-out infinite; }
-    .mesh-bg {
-      background-color: #041833;
-      background-image:
-        radial-gradient(at 15% 15%, rgba(2, 132, 199, 0.42) 0px, transparent 50%),
-        radial-gradient(at 85% 20%, rgba(245, 158, 11, 0.22) 0px, transparent 45%),
-        radial-gradient(at 50% 90%, rgba(16, 185, 129, 0.22) 0px, transparent 50%);
+    .logo-animated {
+      animation: floatLogo 3.2s ease-in-out infinite, pulseGlow 3.2s ease-in-out infinite;
     }
-    ::-webkit-scrollbar { width: 7px; height: 7px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 999px; }
+
+    .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; }
+    .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 9999px; }
+    .input-locked { background-color: #e2e8f0 !important; color: #475569 !important; cursor: not-allowed !important; border-color: #cbd5e1 !important; }
+
+    @media print {
+      .no-print { display: none !important; }
+      #printProofArea { display: block !important; position: fixed; inset: 0; background: white; z-index: 99999; padding: 24px; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
 
-  <div id="toastBox" class="fixed top-5 right-5 z-50 flex flex-col gap-2 max-w-md"></div>
-
-  <div id="globalLoader" class="hidden fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center">
-    <div class="bg-white px-6 py-5 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-200">
-      <div class="loader-spin"></div>
-      <div>
-        <p id="loaderText" class="font-extrabold text-slate-800 text-sm">Memproses data...</p>
-        <p class="text-xs text-slate-500">SMART-BOS Kabupaten Boalemo</p>
-      </div>
+  <!-- ==================== GLOBAL LOADING OVERLAY ==================== -->
+  <div id="globalLoader" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center">
+    <div class="bg-white rounded-2xl p-6 shadow-2xl flex flex-col items-center gap-3 max-w-xs text-center">
+      <div class="w-11 h-11 border-4 border-blue-900 border-t-amber-400 rounded-full animate-spin"></div>
+      <p id="loaderText" class="text-sm font-bold text-slate-800">Memproses data...</p>
     </div>
   </div>
 
-  <!-- VIEW 1: MODERN LOGIN PORTAL SMART-BOS -->
-  <div id="loginView" class="min-h-screen flex items-center justify-center p-4 sm:p-6 mesh-bg relative overflow-hidden">
-    <div class="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-12 rounded-[2rem] overflow-hidden shadow-[0_25px_70px_-15px_rgba(0,0,0,0.65)] border border-white/15 bg-white relative z-10">
-      
-      <!-- Left Branding Panel -->
-      <div class="lg:col-span-6 bg-gradient-to-br from-[#051d3b] via-[#0B4F9F] to-[#0284C7] p-8 lg:p-11 text-white flex flex-col justify-between relative overflow-hidden">
-        <div class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-sky-300/15 blur-3xl pointer-events-none"></div>
-        <div class="absolute -left-20 -bottom-20 w-72 h-72 rounded-full bg-amber-400/15 blur-3xl pointer-events-none"></div>
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div id="toastBox" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm"></div>
 
-        <div class="relative z-10">
-          <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-[11px] font-bold tracking-wider uppercase mb-7 shadow-xs">
-            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-            <span>Portal Resmi • Tahun Anggaran 2026</span>
-          </div>
+  <!-- ==================== 1. HALAMAN LOGIN (TAMPILAN ASLI + ANIMASI LOGO) ==================== -->
+  <section id="loginSection" class="flex-1 flex items-center justify-center p-4 bg-gradient-to-br from-blue-950 via-blue-900 to-slate-900 relative overflow-hidden">
+    <!-- Dekorasi Latar Belakang Halus -->
+    <div class="absolute -top-24 -left-24 w-80 h-80 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
+    <div class="absolute -bottom-24 -right-24 w-80 h-80 bg-amber-400/15 rounded-full blur-3xl pointer-events-none"></div>
 
-          <!-- Animated Living Logo Showcase -->
-          <div class="flex items-center gap-5 mb-6">
-            <div class="relative shrink-0 logo-float">
-              <div class="absolute -inset-2 rounded-3xl bg-gradient-to-tr from-amber-400 via-sky-300 to-emerald-400 blur-md logo-aura"></div>
-              <div class="relative w-24 h-24 rounded-3xl bg-white/95 p-2 shadow-2xl border border-white flex items-center justify-center">
-                <img src="https://i.ibb.co.com/DHKyLRYp/a96772c7-3a62-4333-b1c6-2765aa0fe2b8.png" alt="Logo SMART-BOS" class="w-full h-full object-contain" />
-              </div>
-            </div>
-            <div>
-              <h1 class="text-3xl sm:text-4xl font-extrabold tracking-tight leading-none drop-shadow-xs">
-                SMART-<span class="text-amber-400">BOS</span>
-              </h1>
-              <p class="text-xs sm:text-sm font-semibold text-sky-100/95 mt-2 leading-snug">
-                Sistem Manajemen Administrasi Rekonsiliasi Terpadu BOS
-              </p>
-            </div>
-          </div>
-
-          <!-- Tagline Banner -->
-          <div class="px-4 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-amber-300 to-amber-500 text-slate-950 font-extrabold text-xs sm:text-sm text-center shadow-lg mb-7 tracking-wide">
-            “Kelola BOS Lebih Mudah, Akurat dan Terpercaya”
-          </div>
-
-          <!-- 4 Pilar Utama -->
-          <div class="grid grid-cols-2 gap-3 text-xs">
-            <div class="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 flex items-center gap-3 hover:bg-white/15 transition">
-              <div class="w-9 h-9 rounded-xl bg-amber-400/20 flex items-center justify-center shrink-0 text-amber-300"><i data-lucide="shield-check" class="w-5 h-5"></i></div>
-              <span class="font-bold leading-tight">Aman &amp; Terpercaya</span>
-            </div>
-            <div class="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 flex items-center gap-3 hover:bg-white/15 transition">
-              <div class="w-9 h-9 rounded-xl bg-emerald-400/20 flex items-center justify-center shrink-0 text-emerald-300"><i data-lucide="bar-chart-3" class="w-5 h-5"></i></div>
-              <span class="font-bold leading-tight">Transparan &amp; Akuntabel</span>
-            </div>
-            <div class="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 flex items-center gap-3 hover:bg-white/15 transition">
-              <div class="w-9 h-9 rounded-xl bg-sky-300/20 flex items-center justify-center shrink-0 text-amber-300"><i data-lucide="layers" class="w-5 h-5"></i></div>
-              <span class="font-bold leading-tight">Terintegrasi 12 Bulan</span>
-            </div>
-            <div class="bg-white/10 backdrop-blur-md p-3.5 rounded-2xl border border-white/15 flex items-center gap-3 hover:bg-white/15 transition">
-              <div class="w-9 h-9 rounded-xl bg-sky-300/20 flex items-center justify-center shrink-0 text-sky-200"><i data-lucide="clock" class="w-5 h-5"></i></div>
-              <span class="font-bold leading-tight">Efisien &amp; Tepat Waktu</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Elegant Modern Copyright -->
-        <div class="relative z-10 pt-5 mt-8 border-t border-white/15">
-          <div class="flex items-center gap-2.5 text-sky-100/90">
-            <div class="w-7 h-7 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center shrink-0 text-amber-300">
-              <i data-lucide="landmark" class="w-3.5 h-3.5"></i>
-            </div>
-            <div class="leading-tight">
-              <p class="text-[11px] font-extrabold tracking-wide text-white">
-                &copy; 2026 Dinas Pendidikan dan Kebudayaan Kabupaten Boalemo
-              </p>
-              <p class="text-[10px] text-sky-200/80 font-medium mt-0.5">
-                All Rights Reserved • Sistem Rekonsiliasi Dana BOS Terpadu
-              </p>
-            </div>
-          </div>
-        </div>
+    <div class="w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 relative z-10">
+      <div class="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-800 p-6 text-center text-white">
+        <img id="loginLogo" src="https://i.ibb.co.com/DHKyLRYp/a96772c7-3a62-4333-b1c6-2765aa0fe2b8.png" alt="Logo SMART-BOS" class="logo-animated w-20 h-20 mx-auto rounded-2xl bg-white p-1.5 mb-3.5 object-contain">
+        <span class="inline-block px-3 py-0.5 rounded-full bg-amber-400 text-blue-950 text-[11px] font-extrabold tracking-wider uppercase mb-1">TA 2026 • Kab. Boalemo</span>
+        <h1 class="text-2xl font-extrabold tracking-tight">SMART-BOS</h1>
+        <p class="text-xs text-blue-100 mt-1">Sistem Manajemen Administrasi Rekonsiliasi Terpadu BOS</p>
+        <p class="text-[11px] text-amber-300 italic mt-0.5">"Kelola BOS Lebih Mudah, Akurat dan Terpercaya"</p>
       </div>
 
-      <!-- Right Login Form -->
-      <div class="lg:col-span-6 p-8 lg:p-12 flex flex-col justify-center bg-white">
-        <div class="mb-7">
-          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-sky-50 border border-sky-200 text-[11px] font-extrabold uppercase tracking-wider text-[#0B4F9F] mb-2">
-            <i data-lucide="lock-keyhole" class="w-3.5 h-3.5 text-[#0284C7]"></i> Autentikasi Pengguna
+      <form id="loginForm" class="p-6 space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Username Akun</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-user"></i></span>
+            <input type="text" id="loginUsername" required placeholder="Contoh: sekolah001 / admin.botumoito / superadmin" class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 focus:border-blue-800 outline-none">
           </div>
-          <h2 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Masuk ke SMART-BOS</h2>
-          <p class="text-xs sm:text-sm text-slate-500 mt-1.5 leading-relaxed">
-            Silakan masukkan kredensial resmi Anda untuk mengakses layanan rekonsiliasi BOS.
-          </p>
         </div>
 
-        <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-5">
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Username Pengguna</label>
-            <div class="relative">
-              <i data-lucide="user" class="w-4 h-4 text-slate-400 absolute left-4 top-3.5"></i>
-              <input type="text" id="loginUser" required placeholder="Masukkan username Anda"
-                class="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-slate-300 text-sm font-semibold focus:outline-none focus:border-[#0B4F9F] focus:ring-4 focus:ring-blue-500/10 transition" />
-            </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-1">Password</label>
+          <div class="relative">
+            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400"><i class="fa-solid fa-lock"></i></span>
+            <input type="password" id="loginPassword" required placeholder="Masukkan password akun" class="w-full pl-10 pr-4 py-2.5 text-sm border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 focus:border-blue-800 outline-none">
           </div>
+        </div>
 
-          <div>
-            <label class="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1.5">Kata Sandi</label>
-            <div class="relative">
-              <i data-lucide="key-round" class="w-4 h-4 text-slate-400 absolute left-4 top-3.5"></i>
-              <input type="password" id="loginPass" required placeholder="Masukkan kata sandi Anda"
-                class="w-full pl-11 pr-12 py-3.5 rounded-2xl border border-slate-300 text-sm font-semibold focus:outline-none focus:border-[#0B4F9F] focus:ring-4 focus:ring-blue-500/10 transition" />
-              <button type="button" onclick="togglePassVisibility()" class="absolute right-4 top-3.5 text-slate-400 hover:text-slate-700 transition">
-                <i data-lucide="eye" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </div>
+        <!-- Kolom Wajib Nama Petugas khusus saat Super Admin login paralel -->
+        <div id="petugasFieldWrapper" class="hidden bg-amber-50 border border-amber-300 rounded-xl p-3.5">
+          <label class="block text-xs font-extrabold text-amber-900 uppercase mb-1">
+            <i class="fa-solid fa-user-shield mr-1"></i> Nama Petugas Verifikator (Wajib)
+          </label>
+          <input type="text" id="loginPetugasName" placeholder="Ketik nama lengkap petugas (misal: Budi Santoso)" class="w-full px-3 py-2 text-sm bg-white border border-amber-400 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none">
+          <p class="text-[11px] text-amber-800 mt-1">Wajib diisi agar sistem mencatat petugas yang memeriksa &amp; mensahkan rekon saat dibuka bersamaan.</p>
+        </div>
 
-          <button type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-[#0B4F9F] to-[#0284C7] hover:opacity-95 text-white font-extrabold text-sm shadow-lg shadow-blue-900/20 transition flex items-center justify-center gap-2 cursor-pointer">
-            <i data-lucide="log-in" class="w-4 h-4"></i> Masuk ke Aplikasi SMART-BOS
-          </button>
-        </form>
-      </div>
+        <button type="submit" class="w-full py-3 bg-blue-900 hover:bg-blue-800 text-white font-bold text-sm rounded-xl shadow-lg shadow-blue-900/30 transition flex items-center justify-center gap-2">
+          <i class="fa-solid fa-right-to-bracket"></i> Masuk ke Sistem
+        </button>
+
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 text-[11px] text-slate-600 space-y-1">
+          <p class="font-bold text-slate-700"><i class="fa-solid fa-circle-info text-blue-700 mr-1"></i>Format Akun Terdaftar:</p>
+          <p>• <b>Sekolah:</b> <code>sekolah001</code> s.d. <code>sekolah190</code></p>
+          <p>• <b>Admin Kecamatan:</b> <code>admin.botumoito</code>, <code>admin.tilamuta</code>, dll.</p>
+          <p>• <b>Super Admin Dinas:</b> <code>superadmin</code> (Wajib isi nama petugas)</p>
+        </div>
+      </form>
     </div>
-  </div>
+  </section>
 
-  <!-- VIEW 2: MAIN APP SHELL -->
-  <div id="appShell" class="hidden min-h-screen flex flex-col">
-    <header class="bg-gradient-to-r from-[#051d3b] via-[#0B4F9F] to-[#0284C7] text-white sticky top-0 z-30 shadow-lg">
-      <div class="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3.5">
-          <!-- Living Header Logo -->
-          <div class="relative shrink-0">
-            <div class="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-amber-400 to-sky-300 opacity-60 blur-xs"></div>
-            <div class="relative w-11 h-11 rounded-xl bg-white p-1 shadow-md flex items-center justify-center">
-              <img src="https://i.ibb.co.com/DHKyLRYp/a96772c7-3a62-4333-b1c6-2765aa0fe2b8.png" alt="SMART-BOS" class="w-full h-full object-contain" />
-            </div>
-          </div>
+  <!-- ==================== 2. APLIKASI UTAMA (SETELAH LOGIN) ==================== -->
+  <div id="mainAppWrapper" class="hidden flex-1 flex flex-col no-print">
+
+    <!-- Top Navbar -->
+    <header class="bg-gradient-to-r from-blue-950 via-blue-900 to-blue-800 text-white shadow-md sticky top-0 z-30">
+      <div class="max-w-[1600px] mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <img id="headerLogo" src="https://i.ibb.co.com/DHKyLRYp/a96772c7-3a62-4333-b1c6-2765aa0fe2b8.png" alt="Logo" class="w-11 h-11 rounded-xl bg-white p-1 object-contain shadow">
           <div>
-            <div class="flex items-center gap-2">
-              <h1 class="font-extrabold text-base sm:text-lg tracking-tight leading-none">SMART-<span class="text-amber-300">BOS</span></h1>
-              <span class="hidden md:inline-block px-2.5 py-0.5 rounded-full bg-white/15 border border-white/15 text-[10px] font-bold text-amber-200">TA 2026 • Kab. Boalemo</span>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="text-lg font-extrabold tracking-tight">SMART-BOS</span>
+              <span class="px-2.5 py-0.5 text-[11px] font-bold rounded-full bg-amber-400 text-blue-950">TA 2026 • Kab. Boalemo</span>
             </div>
-            <p class="text-[11px] text-sky-100 mt-0.5 hidden sm:block">Sistem Manajemen Administrasi Rekonsiliasi Terpadu BOS — <em>“Kelola BOS Lebih Mudah, Akurat dan Terpercaya”</em></p>
+            <p class="text-[11px] text-blue-200 hidden sm:block">Sistem Manajemen Administrasi Rekonsiliasi Terpadu BOS — <i>"Kelola BOS Lebih Mudah, Akurat dan Terpercaya"</i></p>
           </div>
         </div>
 
         <div class="flex items-center gap-3">
-          <div class="hidden sm:block text-right">
-            <p id="navUserName" class="text-xs font-extrabold text-white">-</p>
-            <span id="navUserBadge" class="inline-block text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-400 text-slate-950 shadow-xs">-</span>
+          <div class="text-right">
+            <p id="navInstansiName" class="text-xs sm:text-sm font-extrabold uppercase tracking-wide">-</p>
+            <span id="navRoleBadge" class="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-400 text-blue-950">-</span>
           </div>
-          <button onclick="logoutApp()" class="px-3.5 py-2 rounded-xl bg-rose-500 hover:bg-rose-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-sm transition">
-            <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Keluar
+          <button onclick="logoutApp()" class="px-3.5 py-2 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-xl shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-right-from-bracket"></i> Keluar
+          </button>
+        </div>
+      </div>
+    </header>
+    <!-- ==================== 3. VIEW AKUN SEKOLAH ==================== -->
+    <main id="sekolahView" class="hidden flex-1 max-w-[1600px] w-full mx-auto p-4 space-y-4">
+
+      <!-- Bar Navigasi Bulan & Mini Status 12 Bulan -->
+      <div class="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex items-center gap-3 flex-wrap">
+          <label class="text-xs font-extrabold text-slate-700 uppercase"><i class="fa-solid fa-calendar-days text-blue-800 mr-1"></i> Pilih Bulan Rekonsiliasi:</label>
+          <select id="sekolahBulanSelect" onchange="loadSekolahData()" class="px-4 py-2 bg-blue-50 border border-blue-300 text-blue-950 font-bold text-sm rounded-xl focus:ring-2 focus:ring-blue-800 outline-none"></select>
+          <span id="sekolahStatusBadge" class="px-3 py-1 rounded-full text-xs font-extrabold bg-slate-100 text-slate-700">Memuat...</span>
+        </div>
+
+        <!-- Mini Grid Status 12 Bulan -->
+        <div id="sekolahMini12Months" class="flex flex-wrap gap-1.5"></div>
+      </div>
+
+      <!-- Banner Status Penguncian, Catatan Verifikator, & Tombol Cetak Bukti Sah -->
+      <div id="sekolahAlertBanner" class="hidden rounded-2xl p-4 border shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-start gap-3">
+          <div id="sekolahAlertIcon" class="text-xl mt-0.5"></div>
+          <div>
+            <h3 id="sekolahAlertTitle" class="text-sm font-extrabold"></h3>
+            <p id="sekolahAlertDesc" class="text-xs mt-0.5"></p>
+            <p id="sekolahCatatanVerifBox" class="hidden mt-2 px-3 py-1.5 rounded-lg bg-white/85 border border-amber-300 text-xs font-semibold text-amber-950"></p>
+          </div>
+        </div>
+        <div id="sekolahAlertActions" class="flex items-center gap-2 flex-wrap"></div>
+      </div>
+
+      <!-- Grid Utama: Kiri (Dokumen + Form 1..5) & Kanan (Live Document Viewer) -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+        <!-- KOLOM KIRI (7 Kolom): Upload & Form Input -->
+        <div class="lg:col-span-7 space-y-4">
+
+          <!-- Kotak Upload Dokumen Pendukung -->
+          <div class="bg-white rounded-2xl p-4 shadow-xs border-2 border-dashed border-blue-200">
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <div>
+                <h2 class="text-sm font-extrabold text-blue-950 flex items-center gap-2">
+                  <i class="fa-solid fa-folder-open text-blue-700"></i> Dokumen Pendukung (PDF, Excel, Foto)
+                </h2>
+                <div class="flex items-center gap-2 mt-1 flex-wrap">
+                  <span id="badgeReqArkas" class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-xmark mr-1"></i>BKU Arkas (PDF)</span>
+                  <span id="badgeReqManual" class="px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700"><i class="fa-solid fa-xmark mr-1"></i>BKU Manual (Excel)</span>
+                  <span class="text-[11px] text-slate-500">• Wajib unggah keduanya sebelum simpan</span>
+                </div>
+              </div>
+            </div>
+
+            <div id="uploadControlBar" class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3">
+              <select id="jenisDokumenSelect" class="sm:col-span-4 px-3 py-2 text-xs font-bold border border-slate-300 rounded-xl bg-slate-50 outline-none">
+                <option value="1. BKU Arkas (PDF) [Wajib]">1. BKU Arkas (PDF) [Wajib]</option>
+                <option value="2. BKU Manual (Excel) [Wajib]">2. BKU Manual (Excel) [Wajib]</option>
+                <option value="3. Rekening Koran Bank">3. Rekening Koran Bank</option>
+                <option value="4. Bukti Setor Pajak / NTPN">4. Bukti Setor Pajak / NTPN</option>
+                <option value="5. Berita Acara / Dokumen Lain">5. Berita Acara / Dokumen Lain</option>
+              </select>
+              <input type="file" id="fileDokumenInput" accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png" class="sm:col-span-5 text-xs text-slate-600 file:mr-2 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-50 file:text-blue-800 hover:file:bg-blue-100 border border-slate-300 rounded-xl p-1">
+              <button type="button" id="btnUploadDok" onclick="handleUploadDokumen()" class="sm:col-span-3 py-2 px-3 bg-blue-800 hover:bg-blue-900 text-white text-xs font-bold rounded-xl shadow transition flex items-center justify-center gap-1.5">
+                <i class="fa-solid fa-cloud-arrow-up"></i> Unggah
+              </button>
+            </div>
+
+            <!-- Tabel Dokumen Terunggah -->
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+              <table class="w-full text-left border-collapse text-xs">
+                <thead class="bg-slate-100 text-slate-700 font-bold">
+                  <tr>
+                    <th class="py-2 px-3">Jenis Dokumen</th>
+                    <th class="py-2 px-3">Nama File</th>
+                    <th class="py-2 px-3 text-right">Pratinjau &amp; Aksi</th>
+                  </tr>
+                </thead>
+                <tbody id="tabelDokumenSekolah" class="divide-y divide-slate-200 bg-white">
+                  <tr><td colspan="3" class="py-4 text-center text-slate-400">Belum ada dokumen bulan ini</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Form Input 5 Bagian dengan Deskripsi Panduan Sederhana -->
+          <form id="formRekonsiliasi" onsubmit="handleSimpanRekonsiliasi(event)" class="space-y-3">
+
+            <!-- BAGIAN 1 -->
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+              <div class="bg-blue-950 text-white px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-xs sm:text-sm font-extrabold tracking-wide">1. SALDO AWAL &amp; PAJAK TERHUTANG 2019–2025</h3>
+                  <p class="text-[11px] text-blue-200 mt-0.5">Isi sisa saldo uang tunai di brankas, saldo di rekening bank, dan utang pajak dari tahun atau bulan lalu yang tercatat di awal bulan.</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-amber-400 text-blue-950 text-[10px] font-extrabold shrink-0">Saldo Awal</span>
+              </div>
+              <div class="p-4 space-y-3">
+                <div id="autoCarryNote" class="hidden text-[11px] bg-emerald-50 text-emerald-800 border border-emerald-200 px-3 py-2 rounded-xl font-semibold"></div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Saldo Awal Kas Tunai (Rp)</label>
+                    <input type="number" step="0.01" id="inp_saTunai" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Saldo Awal Bank (Rp)</label>
+                    <input type="number" step="0.01" id="inp_saBank" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                  </div>
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-700 mb-1">Utang Pajak Sebelumnya (Rp)</label>
+                    <input type="number" step="0.01" id="inp_saPajakTerhutang" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- BAGIAN 2 -->
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+              <div class="bg-blue-950 text-white px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-xs sm:text-sm font-extrabold tracking-wide">2. PENAMBAHAN DANA &amp; PUNGUTAN PAJAK 2026</h3>
+                  <p class="text-[11px] text-blue-200 mt-0.5">Isi dana BOS yang cair masuk ke rekening sekolah bulan ini beserta total pajak (PPN/PPh) yang dipungut saat belanja.</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-amber-400 text-blue-950 text-[10px] font-extrabold shrink-0">Penerimaan</span>
+              </div>
+              <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Penerimaan Dana BOS Tahap I (Rp)</label>
+                  <input type="number" step="0.01" id="inp_terimaBosTahap1" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Penerimaan Dana BOS Tahap II (Rp)</label>
+                  <input type="number" step="0.01" id="inp_terimaBosTahap2" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Bunga Bank / Jasa Giro (Rp)</label>
+                  <input type="number" step="0.01" id="inp_terimaJasaGiro" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Pungutan Pajak Bulan Ini (PPN/PPh) (Rp)</label>
+                  <input type="number" step="0.01" id="inp_pungutPajak" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- BAGIAN 3 -->
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+              <div class="bg-blue-950 text-white px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-xs sm:text-sm font-extrabold tracking-wide">3. PENARIKAN TUNAI &amp; BELANJA NON-TUNAI CMS/TRANSFER</h3>
+                  <p class="text-[11px] text-blue-200 mt-0.5">Isi total pengambilan uang tunai dari bank dan total belanja yang dibayar langsung lewat transfer bank atau aplikasi CMS.</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-amber-400 text-blue-950 text-[10px] font-extrabold shrink-0">Mutasi Kas &amp; Bank</span>
+              </div>
+              <div class="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Penarikan Tunai dari Bank (Rp)</label>
+                  <input type="number" step="0.01" id="inp_tarikTunai" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Belanja Non-Tunai / Transfer CMS (Rp)</label>
+                  <input type="number" step="0.01" id="inp_belanjaNonTunai" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- BAGIAN 4 -->
+            <div class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+              <div class="bg-blue-950 text-white px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-xs sm:text-sm font-extrabold tracking-wide">4. PENGURANGAN / REALISASI BELANJA &amp; SETORAN PAJAK</h3>
+                  <p class="text-[11px] text-blue-200 mt-0.5">Isi seluruh pengeluaran belanja sekolah (Pegawai, Barang/Jasa, Modal) serta total pajak yang sudah disetorkan bulan ini.</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-amber-400 text-blue-950 text-[10px] font-extrabold shrink-0">Belanja &amp; Setoran</span>
+              </div>
+              <div class="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Belanja Pegawai (Rp)</label>
+                  <input type="number" step="0.01" id="inp_belanjaPegawai" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Belanja Barang &amp; Jasa (Rp)</label>
+                  <input type="number" step="0.01" id="inp_belanjaBarangJasa" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Belanja Modal (Rp)</label>
+                  <input type="number" step="0.01" id="inp_belanjaModal" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Setoran Pajak Bulan Ini (Rp)</label>
+                  <input type="number" step="0.01" id="inp_setorPajak" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="block text-[11px] font-bold text-slate-700 mb-1">Setoran Bunga Bank / Biaya Admin Bank (Rp)</label>
+                  <input type="number" step="0.01" id="inp_setorJasaGiro" oninput="hitungOtomatis()" class="rekon-input w-full px-3 py-2 text-sm font-bold border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none" value="0">
+                </div>
+              </div>
+            </div>
+
+            <!-- BAGIAN 5 -->
+            <div class="bg-white rounded-2xl shadow-xs border-2 border-sky-500 overflow-hidden">
+              <div class="bg-sky-700 text-white px-4 py-3 flex items-center justify-between gap-2">
+                <div>
+                  <h3 class="text-xs sm:text-sm font-extrabold tracking-wide">5. HASIL PERHITUNGAN OTOMATIS SALDO AKHIR &amp; PAJAK</h3>
+                  <p class="text-[11px] text-sky-100 mt-0.5">Angka di bawah ini terhitung otomatis oleh sistem. Cocokkan saldo akhir di sini dengan BKU dan Rekening Koran Anda.</p>
+                </div>
+                <span class="px-2.5 py-1 rounded-full bg-white text-sky-900 text-[10px] font-extrabold shrink-0">Otomatis Rumus</span>
+              </div>
+              <div class="p-4 space-y-3 bg-sky-50/50">
+                <!-- Peringatan Dini jika Saldo Minus -->
+                <div id="saldoMinusWarning" class="hidden p-3 rounded-xl bg-rose-100 border border-rose-300 text-rose-900 text-xs font-bold flex items-center gap-2">
+                  <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
+                  <span>Perhatian: Terdeteksi saldo minus! Periksa kembali rincian input Anda sebelum menyimpan.</span>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <span class="text-slate-500 font-semibold block">Total Saldo Awal</span>
+                    <span id="out_totalSaldoAwal" class="text-sm font-extrabold text-slate-800">Rp 0</span>
+                  </div>
+                  <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <span class="text-slate-500 font-semibold block">Total Penerimaan</span>
+                    <span id="out_totalPenerimaan" class="text-sm font-extrabold text-emerald-700">Rp 0</span>
+                  </div>
+                  <div class="bg-white p-3 rounded-xl border border-slate-200">
+                    <span class="text-slate-500 font-semibold block">Total Realisasi Belanja</span>
+                    <span id="out_totalBelanja" class="text-sm font-extrabold text-rose-700">Rp 0</span>
+                  </div>
+                  <div class="bg-white p-3 rounded-xl border border-sky-300">
+                    <span class="text-sky-800 font-bold block">Saldo Akhir Kas Tunai</span>
+                    <span id="out_skTunai" class="text-sm font-extrabold text-blue-950">Rp 0</span>
+                  </div>
+                  <div class="bg-white p-3 rounded-xl border border-sky-300">
+                    <span class="text-sky-800 font-bold block">Saldo Akhir Bank</span>
+                    <span id="out_skBank" class="text-sm font-extrabold text-blue-950">Rp 0</span>
+                  </div>
+                  <div class="bg-blue-950 text-white p-3 rounded-xl shadow">
+                    <span class="text-blue-200 font-bold block">Total Saldo Akhir (Kas + Bank)</span>
+                    <span id="out_totalSaldoAkhir" class="text-sm font-extrabold text-amber-300">Rp 0</span>
+                  </div>
+                </div>
+                <div class="bg-amber-50 border border-amber-200 px-3 py-2 rounded-xl flex items-center justify-between text-xs">
+                  <span class="font-bold text-amber-900">Sisa Pajak Belum Disetor (Terhutang):</span>
+                  <span id="out_sisaPajak" class="font-extrabold text-amber-950 text-sm">Rp 0</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bar Tombol Simpan / Ajukan Revisi -->
+            <div class="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <span class="text-xs text-slate-500">Contoh desimal gunakan titik: <code>186335.80</code></span>
+              <div id="sekolahFormButtonGroup" class="flex items-center gap-2 flex-wrap">
+                <button type="button" id="btnResetForm" onclick="resetFormAngka()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl transition">
+                  <i class="fa-solid fa-trash-can mr-1"></i> Kosongkan
+                </button>
+                <button type="submit" id="btnSimpanRekon" class="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-extrabold rounded-xl shadow-lg shadow-blue-900/25 transition">
+                  <i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Rekonsiliasi
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- KOLOM KANAN (5 Kolom): Live Document Viewer (Split-Screen) -->
+        <div class="lg:col-span-5 bg-slate-900 rounded-2xl shadow-lg overflow-hidden border border-slate-800 sticky top-20">
+          <div class="bg-slate-950 px-4 py-3 border-b border-slate-800 flex items-center justify-between gap-2">
+            <div>
+              <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400 block">LIVE DOCUMENT VIEWER (SPLIT-SCREEN)</span>
+              <h3 id="viewerDocTitle" class="text-xs font-bold text-white truncate max-w-xs">Pilih dokumen di sebelah kiri untuk pratinjau</h3>
+            </div>
+            <a id="viewerExternalLink" href="#" target="_blank" class="hidden px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-xs text-blue-300 font-bold rounded-lg">
+              <i class="fa-solid fa-up-right-from-square mr-1"></i> Tab Baru
+            </a>
+          </div>
+          <div id="viewerContainer" class="h-[680px] flex items-center justify-center p-6 text-center text-slate-400">
+            <div class="max-w-xs space-y-2">
+              <div class="w-12 h-12 rounded-2xl bg-amber-400/10 text-amber-400 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+              </div>
+              <h4 class="text-sm font-extrabold text-white">Pratinjau Dokumen Samping Layar</h4>
+              <p class="text-xs text-slate-400 leading-relaxed">Klik tombol <b>"Pratinjau"</b> pada BKU Arkas, BKU Manual, Rekening Koran, atau Foto di sebelah kiri untuk mencocokkan angka secara langsung tanpa membuka tab baru.</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </main>
+    <!-- ==================== 4. VIEW ADMIN KECAMATAN & SUPER ADMIN VERIFIKATOR ==================== -->
+    <main id="adminDashboardView" class="hidden flex-1 max-w-[1600px] w-full mx-auto p-4 space-y-4">
+
+      <!-- Header Filter Bulan, Kecamatan & Tombol Download Excel BA Rekon (Khusus Super Admin) -->
+      <div class="bg-white rounded-2xl p-4 shadow-xs border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3 flex-wrap">
+          <div>
+            <label class="block text-[10px] font-extrabold text-slate-500 uppercase">Bulan Rekon</label>
+            <select id="adminBulanSelect" onchange="loadAdminDashboard()" class="px-3.5 py-2 bg-blue-50 border border-blue-300 text-blue-950 font-bold text-xs rounded-xl outline-none"></select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-extrabold text-slate-500 uppercase">Filter Kecamatan</label>
+            <select id="adminKecamatanSelect" onchange="renderAdminTable()" class="px-3.5 py-2 bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs rounded-xl outline-none">
+              <option value="SEMUA">Semua Kecamatan (190 Sekolah)</option>
+              <option value="Botumoito">Kecamatan Botumoito</option>
+              <option value="Dulupi">Kecamatan Dulupi</option>
+              <option value="Mananggu">Kecamatan Mananggu</option>
+              <option value="Paguyaman">Kecamatan Paguyaman</option>
+              <option value="Paguyaman Pantai">Kecamatan Paguyaman Pantai</option>
+              <option value="Tilamuta">Kecamatan Tilamuta</option>
+              <option value="Wonosari">Kecamatan Wonosari</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-extrabold text-slate-500 uppercase">Filter Status</label>
+            <select id="adminStatusFilter" onchange="renderAdminTable()" class="px-3.5 py-2 bg-slate-50 border border-slate-300 text-slate-800 font-bold text-xs rounded-xl outline-none">
+              <option value="SEMUA">Semua Status</option>
+              <option value="BELUM_INPUT">Belum Input</option>
+              <option value="MENUNGGU_REKON">Menunggu Rekon</option>
+              <option value="SEDANG_DIREKON">Sedang Direkon Petugas</option>
+              <option value="TERVERIFIKASI">Sudah Direkon (Sah)</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-[10px] font-extrabold text-slate-500 uppercase">Cari Sekolah / Kode</label>
+            <input type="text" id="adminSearchInput" oninput="renderAdminTable()" placeholder="Nama sekolah / sekolah001..." class="px-3.5 py-2 bg-slate-50 border border-slate-300 text-xs rounded-xl outline-none">
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap">
+          <button type="button" onclick="loadAdminDashboard()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition">
+            <i class="fa-solid fa-rotate mr-1"></i> Segarkan
+          </button>
+          <!-- Tombol Download Excel Format Lampiran BA Rekonsiliasi (Khusus SUPER_ADMIN) -->
+          <button type="button" id="btnDownloadExcelBA" onclick="handleDownloadExcelBA()" class="hidden px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold rounded-xl shadow transition flex items-center gap-1.5">
+            <i class="fa-solid fa-file-excel"></i> Download Excel Lampiran BA Rekon
           </button>
         </div>
       </div>
 
-      <div class="bg-white text-slate-700 border-b border-slate-200">
-        <div class="max-w-[1440px] mx-auto px-4 sm:px-6 py-2 flex items-center justify-between gap-2 overflow-x-auto">
-          <div class="flex items-center gap-1.5" id="navTabsContainer"></div>
-          <div class="hidden xl:flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold">
-            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Sistem Terpadu Aktif
-          </div>
+      <!-- Kartu Ringkasan Progres (Tampil di ADMIN_KEC & SUPER_ADMIN) -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+          <span class="text-[11px] font-bold text-slate-500 block">Total Sekolah</span>
+          <span id="statTotalSekolah" class="text-2xl font-extrabold text-slate-900">0</span>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border-l-4 border-l-rose-500 border border-slate-200 shadow-xs">
+          <span class="text-[11px] font-bold text-rose-600 block">Belum Input</span>
+          <span id="statBelumInput" class="text-2xl font-extrabold text-rose-700">0</span>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border-l-4 border-l-amber-500 border border-slate-200 shadow-xs">
+          <span class="text-[11px] font-bold text-amber-600 block">Menunggu Rekon</span>
+          <span id="statMenungguRekon" class="text-2xl font-extrabold text-amber-700">0</span>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border-l-4 border-l-sky-500 border border-slate-200 shadow-xs">
+          <span class="text-[11px] font-bold text-sky-600 block">Sedang Direkon</span>
+          <span id="statSedangDirekon" class="text-2xl font-extrabold text-sky-700">0</span>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border-l-4 border-l-emerald-600 border border-slate-200 shadow-xs">
+          <span class="text-[11px] font-bold text-emerald-600 block">Sudah Direkon (Sah)</span>
+          <span id="statTerverifikasi" class="text-2xl font-extrabold text-emerald-700">0</span>
+        </div>
+        <div class="bg-white p-4 rounded-2xl border-l-4 border-l-purple-600 border border-slate-200 shadow-xs">
+          <span class="text-[11px] font-bold text-purple-600 block">Ajuan Izin Revisi</span>
+          <span id="statPengajuanRevisi" class="text-2xl font-extrabold text-purple-700">0</span>
         </div>
       </div>
-    </header>
 
-    <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-6 py-5 space-y-5">
-      <!-- PANEL A: INPUT & SPLIT-SCREEN AUDIT -->
-      <section id="panelInputRekon" class="hidden space-y-4">
-        <div class="glass-card rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-l-4 border-l-[#0B4F9F]">
-          <div>
-            <div class="flex items-center gap-2 flex-wrap">
-              <h2 id="formSchoolTitle" class="text-base sm:text-lg font-extrabold text-slate-900">Nama Sekolah</h2>
-              <span id="formLockBadge" class="px-3 py-0.5 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800">TERBUKA</span>
-              <span id="formVerifBadge" class="px-3 py-0.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800">BELUM DIVERIFIKASI</span>
-            </div>
-            <p class="text-xs text-slate-500 mt-1">Mendukung desimal 2 angka di belakang koma (contoh: <strong>186.335,80</strong>).</p>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <div id="adminSchoolPickerWrap" class="hidden"><select id="adminSchoolSelect" onchange="loadSchoolMonthForm()" class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white max-w-[260px]"></select></div>
-            <select id="monthSelect" onchange="loadSchoolMonthForm()" class="px-3.5 py-2 rounded-xl border border-[#0B4F9F] bg-blue-50 text-[#0B4F9F] text-xs font-extrabold"></select>
-            <button id="btnAdminVerifyToggle" onclick="toggleCurrentSchoolVerify()" class="hidden px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5"><i data-lucide="check-circle-2" class="w-4 h-4"></i> <span id="btnAdminVerifyText">Tandai Terverifikasi</span></button>
-            <button id="btnPullPrevSaldo" onclick="applyPrevMonthSaldo()" class="hidden px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1.5"><i data-lucide="arrow-down-circle" class="w-4 h-4"></i> Tarik Saldo Akhir Bulan Lalu</button>
-          </div>
+      <!-- Info Role Banner untuk Admin Kecamatan (Read-Only Monitoring) -->
+      <div id="adminReadOnlyNotice" class="hidden bg-blue-50 border border-blue-200 text-blue-950 px-4 py-3 rounded-2xl text-xs font-semibold flex items-center gap-2">
+        <i class="fa-solid fa-eye text-blue-700 text-base"></i>
+        <span id="adminReadOnlyText">Anda masuk sebagai <b>Admin Kecamatan (Pemantauan)</b>. Anda bertugas memantau daftar sekolah yang belum dan sudah melakukan rekonsiliasi di wilayah kecamatan Anda.</span>
+      </div>
+
+      <!-- Tab Navigasi Sub-Menu Dashboard -->
+      <div class="flex items-center gap-2 border-b border-slate-300 pb-2 flex-wrap">
+        <button type="button" onclick="switchAdminTab('TAB_SEKOLAH')" id="tabBtnSekolah" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-blue-900 text-white shadow-xs">
+          <i class="fa-solid fa-school mr-1"></i> Daftar Status Sekolah
+        </button>
+        <button type="button" onclick="switchAdminTab('TAB_REVISI')" id="tabBtnRevisi" class="hidden px-4 py-2 rounded-xl text-xs font-extrabold bg-white text-slate-700 border border-slate-300">
+          <i class="fa-solid fa-unlock-keyhole mr-1 text-purple-600"></i> Permohonan Izin Revisi (<span id="badgeTabRevisi">0</span>)
+        </button>
+        <button type="button" onclick="switchAdminTab('TAB_LOG')" id="tabBtnLog" class="px-4 py-2 rounded-xl text-xs font-extrabold bg-white text-slate-700 border border-slate-300">
+          <i class="fa-solid fa-clock-rotate-left mr-1 text-slate-600"></i> Jejak Aktivitas (Audit Trail)
+        </button>
+      </div>
+
+      <!-- TAB 1: Tabel Daftar Sekolah -->
+      <div id="adminTabSekolah" class="bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-blue-950 text-white font-bold">
+              <tr>
+                <th class="py-3 px-4">No</th>
+                <th class="py-3 px-4">Kode &amp; Nama Sekolah</th>
+                <th class="py-3 px-4">Kecamatan</th>
+                <th class="py-3 px-4 text-right">Total Belanja</th>
+                <th class="py-3 px-4 text-right">Saldo Akhir</th>
+                <th class="py-3 px-4">Status Rekonsiliasi</th>
+                <th class="py-3 px-4">Verifikator / Petugas</th>
+                <th class="py-3 px-4 text-right">Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="adminSekolahTableBody" class="divide-y divide-slate-200"></tbody>
+          </table>
         </div>
+      </div>
 
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <div class="glass-card rounded-2xl p-3.5 border-t-4 border-t-[#0B4F9F]"><p class="text-[11px] font-bold uppercase text-slate-500">Total Penambahan</p><p id="sumPenambahan" class="text-sm sm:text-base font-extrabold text-slate-900 mt-1">Rp 0,00</p></div>
-          <div class="glass-card rounded-2xl p-3.5 border-t-4 border-t-rose-600"><p class="text-[11px] font-bold uppercase text-slate-500">Total Pengurangan</p><p id="sumPengurangan" class="text-sm sm:text-base font-extrabold text-rose-700 mt-1">Rp 0,00</p></div>
-          <div class="glass-card rounded-2xl p-3.5 border-t-4 border-t-[#0284C7] bg-sky-50/40"><p class="text-[11px] font-bold uppercase text-[#0B4F9F]">Total Saldo Akhir BKU</p><p id="sumTotalBKU" class="text-sm sm:text-base font-extrabold text-[#0B4F9F] mt-1">Rp 0,00</p></div>
-          <div class="glass-card rounded-2xl p-3.5 border-t-4 border-t-emerald-500"><p class="text-[11px] font-bold uppercase text-slate-500">Saldo Tunai &amp; Bank</p><p id="sumTunaiBank" class="text-xs font-extrabold text-emerald-700 mt-1">T: Rp 0,00<br/>B: Rp 0,00</p></div>
-          <div class="glass-card rounded-2xl p-3.5 border-t-4 border-t-amber-500 col-span-2 lg:col-span-1"><p class="text-[11px] font-bold uppercase text-slate-500">Total Sisa Pajak</p><p id="sumTotalPajak" class="text-sm sm:text-base font-extrabold text-amber-700 mt-1">Rp 0,00</p></div>
+      <!-- TAB 2: Antrean Persetujuan Izin Revisi Sekolah (Khusus SUPER_ADMIN) -->
+      <div id="adminTabRevisi" class="hidden bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="p-4 bg-purple-50 border-b border-purple-200">
+          <h3 class="text-sm font-extrabold text-purple-950"><i class="fa-solid fa-key mr-1.5"></i>Daftar Permohonan Buka Kunci Form Revisi Sekolah</h3>
+          <p class="text-xs text-purple-800 mt-0.5">Sekolah tidak dapat mengubah angka yang sudah disimpan tanpa persetujuan Super Admin di bawah ini.</p>
         </div>
-
-        <div class="grid grid-cols-1 xl:grid-cols-12 gap-4 items-start">
-          <div class="xl:col-span-7 space-y-4">
-            <div class="glass-card rounded-2xl p-4 sm:p-5 border-2 border-dashed border-sky-300 bg-sky-50/30">
-              <div class="mb-3">
-                <h3 class="text-sm font-extrabold text-[#0B4F9F] flex items-center gap-2"><i data-lucide="file-check-2" class="w-4 h-4 text-[#0284C7]"></i> Dokumen Pendukung (PDF, Excel, Foto)</h3>
-                <div class="flex flex-wrap items-center gap-2 mt-1.5 text-[11px]">
-                  <span id="badgeReqArkas" class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">✗ BKU Arkas (PDF)</span>
-                  <span id="badgeReqManual" class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold">✗ BKU Manual (Excel)</span>
-                  <span class="text-slate-500">• Wajib unggah keduanya</span>
-                </div>
-              </div>
-              <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3">
-                <div class="sm:col-span-4">
-                  <select id="docJenisSelect" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs font-bold">
-                    <option value="BKU Arkas (PDF)">1. BKU Arkas (PDF) [Wajib]</option>
-                    <option value="BKU Manual (Excel)">2. BKU Manual (Excel) [Wajib]</option>
-                    <option value="Rekening Koran (PDF/Foto)">3. Rekening Koran (PDF/Foto)</option>
-                    <option value="Bukti Setor Pajak (PDF/Foto)">4. Bukti Setor Pajak (PDF/Foto)</option>
-                    <option value="Dokumen Pendukung Lainnya">5. Dokumen Lainnya</option>
-                  </select>
-                </div>
-                <div class="sm:col-span-5"><input type="file" id="docFileInput" accept=".xlsx,.xls,.pdf,.jpg,.jpeg,.png" class="w-full text-xs bg-white border border-slate-300 rounded-xl p-1.5" /></div>
-                <div class="sm:col-span-3"><button type="button" onclick="handleUploadDoc()" class="w-full py-2 px-3 rounded-xl bg-[#0B4F9F] hover:bg-[#0284C7] text-white text-xs font-extrabold flex items-center justify-center gap-1.5"><i data-lucide="upload-cloud" class="w-4 h-4"></i> Unggah</button></div>
-              </div>
-              <div class="overflow-x-auto bg-white rounded-xl border border-slate-200">
-                <table class="w-full text-xs text-left">
-                  <thead class="bg-slate-100 text-slate-700 font-bold"><tr><th class="px-3 py-2">Jenis Dokumen</th><th class="px-3 py-2">Nama File</th><th class="px-3 py-2 text-center">Pratinjau &amp; Aksi</th></tr></thead>
-                  <tbody id="formDocTableBody" class="divide-y divide-slate-100"><tr><td colspan="3" class="px-3 py-4 text-center text-slate-400">Belum ada dokumen bulan ini.</td></tr></tbody>
-                </table>
-              </div>
-            </div>
-
-            <div id="rekonSectionsContainer" class="space-y-3"></div>
-
-            <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 sticky bottom-3 shadow-xl border border-blue-200 z-20">
-              <div class="text-xs text-slate-600">Contoh desimal: <code class="bg-slate-100 px-1.5 py-0.5 rounded font-bold">186.335,80</code></div>
-              <div class="flex items-center gap-2">
-                <button type="button" id="btnResetMonth" onclick="handleResetMonth()" class="px-3.5 py-2.5 rounded-xl bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs flex items-center gap-1.5"><i data-lucide="trash-2" class="w-4 h-4"></i> Kosongkan</button>
-                <button type="button" id="btnSaveMonth" onclick="handleSaveMonth()" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#0B4F9F] to-[#0284C7] text-white font-extrabold text-xs flex items-center gap-2 shadow-md"><i data-lucide="save" class="w-4 h-4"></i> Simpan Rekonsiliasi</button>
-              </div>
-            </div>
-          </div>
-
-          <!-- SPLIT-SCREEN LIVE DOCUMENT PREVIEW -->
-          <div class="xl:col-span-5 glass-card rounded-2xl overflow-hidden border-2 border-[#0B4F9F]/25 sticky top-28 shadow-lg">
-            <div class="bg-gradient-to-r from-[#051d3b] to-[#0B4F9F] text-white px-4 py-3 flex items-center justify-between gap-2">
-              <div class="min-w-0">
-                <p class="text-[10px] font-bold uppercase tracking-wider text-amber-300">Live Document Viewer (Split-Screen)</p>
-                <h4 id="previewDocTitle" class="text-xs font-extrabold truncate">Pilih dokumen di sebelah kiri untuk pratinjau</h4>
-              </div>
-              <a id="previewExternalBtn" href="#" target="_blank" class="hidden px-2.5 py-1 rounded-lg bg-white/15 hover:bg-white/25 text-[11px] font-bold shrink-0">Buka Penuh</a>
-            </div>
-            <div id="previewQuickPills" class="px-3 py-2 bg-slate-100 border-b border-slate-200 flex items-center gap-1.5 overflow-x-auto"><span class="text-[11px] text-slate-500">Daftar file bulan ini...</span></div>
-            <div class="relative bg-slate-900 h-[620px] flex items-center justify-center">
-              <div id="previewEmptyState" class="text-center p-6 text-slate-300 space-y-2">
-                <i data-lucide="file-search" class="w-12 h-12 mx-auto text-amber-400 opacity-80"></i>
-                <p class="text-sm font-extrabold text-white">Pratinjau Dokumen Samping Layar</p>
-                <p class="text-xs text-slate-400 max-w-xs mx-auto">Klik tombol <strong>“Preview”</strong> pada BKU Arkas, BKU Manual, Rekening Koran, atau Foto untuk mencocokkan angka secara langsung tanpa membuka tab baru.</p>
-              </div>
-              <iframe id="docPreviewIframe" src="" class="hidden w-full h-full border-0 bg-white"></iframe>
-            </div>
-          </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-800 text-white font-bold">
+              <tr>
+                <th class="py-3 px-4">Waktu Ajuan</th>
+                <th class="py-3 px-4">Sekolah &amp; Kecamatan</th>
+                <th class="py-3 px-4">Bulan</th>
+                <th class="py-3 px-4">Alasan Perubahan Data</th>
+                <th class="py-3 px-4 text-right">Keputusan Super Admin</th>
+              </tr>
+            </thead>
+            <tbody id="adminRevisiTableBody" class="divide-y divide-slate-200"></tbody>
+          </table>
         </div>
-      </section>
+      </div>
 
-      <!-- PANEL B: LIVE REVIEW & STATUS CENTANG -->
-      <section id="panelAdminMonitoring" class="hidden space-y-5">
-        <div class="glass-card rounded-2xl p-5 space-y-4 border-l-4 border-l-amber-500">
-          <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-            <div>
-              <div class="flex items-center gap-2"><h2 class="text-lg font-extrabold text-slate-900">Live Review &amp; Kontrol Rekonsiliasi Sekolah</h2><span class="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[11px] font-extrabold">REALTIME</span></div>
-              <p class="text-xs text-slate-500 mt-0.5">Pantau sekolah yang sudah/belum mengisi, beri centang validasi, buka/kunci akses, dan audit dokumen berdampingan.</p>
-            </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <button onclick="loadAdminMonitoring(true)" class="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-extrabold flex items-center gap-1.5"><i data-lucide="refresh-cw" class="w-4 h-4"></i> Segarkan Live Data</button>
-              <button onclick="downloadExcelWilayah()" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold flex items-center gap-1.5 shadow-xs"><i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Download Excel 12 Sheet (JAN–DES)</button>
-            </div>
-          </div>
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 pt-3 border-t border-slate-100">
-            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">Bulan</label><select id="monMonthSelect" onchange="loadAdminMonitoring(true)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"></select></div>
-            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">Kecamatan</label><select id="monKecSelect" onchange="loadAdminMonitoring(true)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"></select></div>
-            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">Jenjang</label><select id="monJenjangSelect" onchange="loadAdminMonitoring(true)" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"><option value="ALL">Semua Jenjang</option><option value="SD">SD Negeri</option><option value="SMP">SMP Negeri</option><option value="SWASTA">Swasta</option></select></div>
-            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">Status Pengisian</label><select id="monStatusFilter" onchange="renderMonitoringRows()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold bg-white"><option value="ALL">Semua Sekolah</option><option value="SUDAH">✓ Sudah Mengisi</option><option value="BELUM">✗ Belum Mengisi</option><option value="VERIFIED">☑ Sudah Centang Valid</option><option value="UNVERIFIED">☐ Belum Centang Valid</option></select></div>
-            <div><label class="block text-[11px] font-bold text-slate-500 mb-1">Cari Sekolah</label><input type="text" id="monSearchInput" oninput="renderMonitoringRows()" placeholder="Nama sekolah..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold" /></div>
-            <div class="flex items-end gap-1.5">
-              <button onclick="handleBulkAccess('TERBUKA')" class="flex-1 py-2 px-2 rounded-xl bg-[#0B4F9F] text-white text-[11px] font-bold">Buka</button>
-              <button onclick="handleBulkAccess('TERKUNCI')" class="flex-1 py-2 px-2 rounded-xl bg-slate-700 text-white text-[11px] font-bold">Kunci</button>
-            </div>
-          </div>
+      <!-- TAB 3: Audit Trail / Jejak Aktivitas -->
+      <div id="adminTabLog" class="hidden bg-white rounded-2xl shadow-xs border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead class="bg-slate-800 text-white font-bold">
+              <tr>
+                <th class="py-3 px-4">Waktu</th>
+                <th class="py-3 px-4">Peran</th>
+                <th class="py-3 px-4">Pelaku / Petugas</th>
+                <th class="py-3 px-4">Sekolah &amp; Bulan</th>
+                <th class="py-3 px-4">Aksi</th>
+                <th class="py-3 px-4">Keterangan</th>
+              </tr>
+            </thead>
+            <tbody id="adminLogTableBody" class="divide-y divide-slate-200"></tbody>
+          </table>
         </div>
-
-        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
-          <div class="glass-card rounded-2xl p-4 border-l-4 border-l-emerald-500"><p class="text-[11px] font-bold text-slate-500 uppercase">Sudah Mengisi (✓)</p><p id="kpiSudahInput" class="text-xl font-extrabold text-emerald-700 mt-1">0 / 0</p></div>
-          <div class="glass-card rounded-2xl p-4 border-l-4 border-l-rose-500"><p class="text-[11px] font-bold text-slate-500 uppercase">Belum Mengisi (✗)</p><p id="kpiBelumInput" class="text-xl font-extrabold text-rose-600 mt-1">0 Sekolah</p></div>
-          <div class="glass-card rounded-2xl p-4 border-l-4 border-l-amber-500"><p class="text-[11px] font-bold text-slate-500 uppercase">Centang Valid (☑)</p><p id="kpiTerverifikasi" class="text-xl font-extrabold text-amber-600 mt-1">0 Sekolah</p></div>
-          <div class="glass-card rounded-2xl p-4 border-l-4 border-l-[#0B4F9F]"><p class="text-[11px] font-bold text-slate-500 uppercase">Total Saldo Akhir BKU</p><p id="kpiSaldoBKU" class="text-base sm:text-lg font-extrabold text-[#0B4F9F] mt-1">Rp 0,00</p></div>
-          <div class="glass-card rounded-2xl p-4 border-l-4 border-l-[#0284C7] col-span-2 lg:col-span-1"><p class="text-[11px] font-bold text-slate-500 uppercase">Total Sisa Pajak</p><p id="kpiTotalPajak" class="text-base sm:text-lg font-extrabold text-[#0284C7] mt-1">Rp 0,00</p></div>
-        </div>
-
-        <div class="glass-card rounded-2xl overflow-hidden">
-          <div class="overflow-x-auto">
-            <table class="w-full text-xs text-left">
-              <thead class="bg-[#051d3b] text-white font-bold">
-                <tr><th class="px-3 py-3">No</th><th class="px-3 py-3">Satuan Pendidikan</th><th class="px-3 py-3 text-center">Status Isi</th><th class="px-3 py-3 text-center">Centang Review</th><th class="px-3 py-3 text-center">Dokumen</th><th class="px-3 py-3 text-right">Saldo Akhir BKU</th><th class="px-3 py-3 text-right">Saldo Bank</th><th class="px-3 py-3 text-center">Kunci</th><th class="px-3 py-3 text-center">Audit &amp; Aksi</th></tr>
-              </thead>
-              <tbody id="monitoringTableBody" class="divide-y divide-slate-200 bg-white"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <!-- PANEL C: ARSIP DOKUMEN -->
-      <section id="panelDokumen" class="hidden space-y-4">
-        <div class="glass-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-[#0284C7]">
-          <div><h2 class="text-lg font-extrabold text-slate-900">Arsip Dokumen Pendukung</h2><p class="text-xs text-slate-500">Daftar seluruh lampiran BKU Arkas, BKU Manual, Rekening Koran, dan Bukti Pajak.</p></div>
-          <input type="text" id="docSearchInput" oninput="renderAllDocsTable()" placeholder="Cari sekolah / jenis / file..." class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold w-full sm:w-72" />
-        </div>
-        <div class="glass-card rounded-2xl overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="bg-[#0B4F9F] text-white font-bold"><tr><th class="px-3 py-3">Bulan</th><th class="px-3 py-3">Sekolah</th><th class="px-3 py-3">Kecamatan</th><th class="px-3 py-3">Jenis</th><th class="px-3 py-3">Nama File</th><th class="px-3 py-3">Waktu</th><th class="px-3 py-3 text-center">Aksi</th></tr></thead><tbody id="allDocsTableBody" class="divide-y divide-slate-200 bg-white"></tbody></table></div></div>
-      </section>
-
-      <!-- PANEL D: MANAJEMEN AKUN -->
-      <section id="panelUsers" class="hidden space-y-4">
-        <div class="glass-card rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-l-4 border-l-emerald-500">
-          <div><h2 class="text-lg font-extrabold text-slate-900">Manajemen Akun Pengguna</h2><p class="text-xs text-slate-500">Kelola kredensial Super Admin, Admin Kecamatan, dan 190 Satuan Pendidikan.</p></div>
-          <input type="text" id="userSearchInput" oninput="renderUsersTable()" placeholder="Cari username / sekolah..." class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold w-full sm:w-64" />
-        </div>
-        <div class="glass-card rounded-2xl overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="bg-[#051d3b] text-white font-bold"><tr><th class="px-3 py-3">Role</th><th class="px-3 py-3">Nama Lengkap / Sekolah</th><th class="px-3 py-3">Wilayah</th><th class="px-3 py-3">Username</th><th class="px-3 py-3">Password</th><th class="px-3 py-3">Status</th><th class="px-3 py-3 text-center">Aksi</th></tr></thead><tbody id="usersTableBody" class="divide-y divide-slate-200 bg-white"></tbody></table></div></div>
-      </section>
-
-      <!-- PANEL E: AUDIT LOG -->
-      <section id="panelAuditLog" class="hidden space-y-4">
-        <div class="glass-card rounded-2xl p-5 flex items-center justify-between border-l-4 border-l-slate-700">
-          <div><h2 class="text-lg font-extrabold text-slate-900">Log Aktivitas Sistem</h2><p class="text-xs text-slate-500">Rekam jejak login, simpan data, verifikasi, dan ekspor Excel.</p></div>
-          <button onclick="loadAuditLogTable(true)" class="px-3.5 py-2 rounded-xl bg-[#0B4F9F] text-white text-xs font-bold">Muat Ulang</button>
-        </div>
-        <div class="glass-card rounded-2xl overflow-hidden"><div class="overflow-x-auto"><table class="w-full text-xs text-left"><thead class="bg-[#051d3b] text-white font-bold"><tr><th class="px-3 py-3">Waktu</th><th class="px-3 py-3">User</th><th class="px-3 py-3">Role</th><th class="px-3 py-3">Aksi</th><th class="px-3 py-3">Target</th><th class="px-3 py-3">Keterangan</th></tr></thead><tbody id="auditTableBody" class="divide-y divide-slate-200 bg-white"></tbody></table></div></div>
-      </section>
+      </div>
     </main>
+
+    <!-- ==================== FOOTER COPYRIGHT DENGAN LOGO BARU ==================== -->
+    <footer class="bg-white border-t border-slate-200 py-3.5 px-4 mt-auto">
+      <div class="max-w-[1600px] mx-auto flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600">
+        <div class="flex items-center gap-2.5">
+          <img src="https://i.ibb.co.com/9mjcFmhN/logo-dikbud.png" alt="Logo Dikbud Boalemo" class="w-7 h-7 object-contain">
+          <span class="font-bold text-slate-800">© 2026 Dinas Pendidikan dan Kebudayaan Kabupaten Boalemo</span>
+        </div>
+        <span class="text-[11px] text-slate-500">SMART-BOS v2.0 • Sistem Manajemen Administrasi Rekonsiliasi Terpadu BOS</span>
+      </div>
+    </footer>
   </div>
 
-  <!-- MODAL EDIT AKUN -->
-  <div id="editUserModal" class="hidden fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b pb-3"><h3 class="font-extrabold text-slate-900">Edit Akun Pengguna</h3><button onclick="closeEditUserModal()" class="text-slate-400 hover:text-slate-700"><i data-lucide="x" class="w-5 h-5"></i></button></div>
-      <input type="hidden" id="editUserId" />
-      <div class="space-y-3 text-xs">
-        <div><label class="font-bold text-slate-700 block mb-1">Nama Lengkap / Sekolah</label><input type="text" id="editUserNama" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold" /></div>
-        <div><label class="font-bold text-slate-700 block mb-1">Username</label><input type="text" id="editUserUsername" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold" /></div>
-        <div><label class="font-bold text-slate-700 block mb-1">Password Baru</label><input type="text" id="editUserPassword" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold" /></div>
-        <div><label class="font-bold text-slate-700 block mb-1">Status Akun</label><select id="editUserStatus" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-bold"><option value="AKTIF">AKTIF</option><option value="NONAKTIF">NONAKTIF</option></select></div>
+  <!-- ==================== MODAL 1: AJUKAN IZIN REVISI (SEKOLAH) ==================== -->
+  <div id="modalAjukanRevisi" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 no-print">
+    <div class="bg-white rounded-2xl max-w-md w-full p-5 shadow-2xl space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <h3 class="text-sm font-extrabold text-blue-950"><i class="fa-solid fa-unlock-keyhole text-amber-500 mr-1.5"></i>Ajukan Izin Perubahan Data</h3>
+        <button onclick="closeModal('modalAjukanRevisi')" class="text-slate-400 hover:text-slate-700"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div class="flex justify-end gap-2 pt-3 border-t">
-        <button onclick="closeEditUserModal()" class="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-bold text-xs">Batal</button>
-        <button onclick="submitEditUser()" class="px-4 py-2 rounded-xl bg-[#0B4F9F] text-white font-bold text-xs">Simpan Perubahan</button>
+      <p class="text-xs text-slate-600 leading-relaxed">Data bulan <b id="revModalBulanText" class="text-blue-950"></b> saat ini dalam status <b>TERKUNCI</b>. Tuliskan alasan bagian mana yang keliru agar Super Admin dapat membuka kunci form Anda:</p>
+      <textarea id="revAlasanInput" rows="3" placeholder="Contoh: Salah menginput nominal Belanja Modal bulan Agustus sebesar Rp 500.000, mohon dibuka kuncinya untuk perbaikan." class="w-full p-3 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-800 outline-none"></textarea>
+      <div class="flex justify-end gap-2">
+        <button type="button" onclick="closeModal('modalAjukanRevisi')" class="px-4 py-2 bg-slate-100 text-slate-700 text-xs font-bold rounded-xl">Batal</button>
+        <button type="button" onclick="submitAjukanRevisi()" class="px-4 py-2 bg-blue-900 hover:bg-blue-800 text-white text-xs font-extrabold rounded-xl">Kirim Permohonan</button>
       </div>
     </div>
   </div>
+
+  <!-- ==================== MODAL 2: VERIFIKASI & AUDIT REKON (SUPER ADMIN) ==================== -->
+  <div id="modalVerifikasiSuperAdmin" class="hidden fixed inset-0 bg-slate-900/70 backdrop-blur-xs z-50 flex items-center justify-center p-3 no-print">
+    <div class="bg-white rounded-2xl max-w-6xl w-full max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="bg-blue-950 text-white px-5 py-3.5 flex items-center justify-between">
+        <div>
+          <span class="text-[10px] font-extrabold uppercase tracking-wider text-amber-400">MEJA AUDIT &amp; REKONSILIASI SUPER ADMIN</span>
+          <h3 id="verifModalTitle" class="text-sm sm:text-base font-extrabold">-</h3>
+        </div>
+        <button onclick="closeModal('modalVerifikasiSuperAdmin')" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="p-4 overflow-y-auto grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1 custom-scroll">
+        <!-- Rincian Angka Sekolah (6 Kolom) -->
+        <div class="lg:col-span-6 space-y-3 text-xs">
+          <div id="verifWarningConcurrent" class="hidden p-3 rounded-xl bg-amber-100 border border-amber-400 text-amber-950 font-bold"></div>
+          <div id="verifRincianBox" class="space-y-2"></div>
+
+          <div class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2">
+            <label class="block font-extrabold text-slate-800">Catatan / Temuan Verifikator (Tampil di Akun Sekolah):</label>
+            <textarea id="verifCatatanInput" rows="2" placeholder="Tuliskan catatan jika ada selisih BKU/Rekening Koran, atau kosongkan jika sudah sesuai..." class="w-full p-2.5 text-xs bg-white border border-slate-300 rounded-xl outline-none"></textarea>
+          </div>
+        </div>
+
+        <!-- Pratinjau Dokumen Sekolah di Dalam Modal (6 Kolom) -->
+        <div class="lg:col-span-6 bg-slate-900 rounded-xl overflow-hidden flex flex-col border border-slate-800">
+          <div class="p-2.5 bg-slate-950 border-b border-slate-800 flex items-center gap-2 flex-wrap" id="verifDocButtons"></div>
+          <div id="verifDocPreviewFrame" class="h-[420px] flex items-center justify-center text-slate-400 text-xs p-4 text-center">
+            Klik salah satu tombol dokumen di atas untuk memeriksa BKU Arkas / BKU Manual / Rekening Koran.
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-slate-100 px-5 py-3 border-t border-slate-200 flex flex-wrap items-center justify-between gap-2">
+        <span class="text-xs text-slate-600">Petugas Pemeriksa: <b id="verifPetugasLabel" class="text-blue-950"></b></span>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button type="button" onclick="submitVerifikasiSuperAdmin(false)" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-blue-950 text-xs font-extrabold rounded-xl">
+            <i class="fa-solid fa-comment-dots mr-1"></i> Simpan Catatan Temuan
+          </button>
+          <button type="button" onclick="submitVerifikasiSuperAdmin(true)" class="px-5 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold rounded-xl shadow">
+            <i class="fa-solid fa-circle-check mr-1"></i> Sahkan &amp; Tandai Sudah Direkon
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== AREA CETAK BUKTI SAH REKON (PDF) ==================== -->
+  <div id="printProofArea" class="hidden"></div>
+
+  <!-- ==================== JAVASCRIPT LOGIKA TERPADU ==================== -->
   <script>
-    let STATE = {
-      user: null,
-      bulanList: [],
-      kecamatanList: [],
-      aksesList: [],
-      dokumenList: [],
-      usersList: [],
-      monitoringRows: [],
-      auditLogsCache: null,
-      currentFormValues: new Array(90).fill(0),
-      currentFormDocs: [],
-      currentStatusVerif: 'BELUM',
-      prevSaldoAkhir: null
-    };
+    const BULAN_LIST = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    let CURRENT_USER = null;
+    let CURRENT_SEKOLAH_DATA = null;
+    let ADMIN_DASHBOARD_CACHE = null;
+    let ACTIVE_VERIF_TARGET = null;
 
-    const FORM_SECTIONS = [
-      {
-        title: '1. SALDO AWAL & PAJAK TERHUTANG 2019–2025',
-        badge: 'Saldo Awal',
-        groups: [
-          {
-            subtitle: 'Saldo Awal Kas per Sumber Dana',
-            fields: [
-              { col: 3, label: 'BOS Reguler - Tunai' }, { col: 4, label: 'BOS Reguler - Bank' },
-              { col: 5, label: 'BOS Kinerja - Tunai' }, { col: 6, label: 'BOS Kinerja - Bank' },
-              { col: 7, label: 'BOS Afirmasi - Tunai' }, { col: 8, label: 'BOS Afirmasi - Bank' },
-              { col: 9, label: 'Dana Lainnya - Tunai' }, { col: 10, label: 'Dana Lainnya - Bank' }
-            ]
-          },
-          {
-            subtitle: 'Saldo Awal Pajak Terhutang 2019–2025',
-            fields: [
-              { col: 11, label: 'PPN 2019/2025' }, { col: 12, label: 'PPh 21 2019/2025' },
-              { col: 13, label: 'PPh 23 2019/2025' }, { col: 14, label: 'SSPD / Pajak Daerah 2019/2025' }
-            ]
-          }
-        ]
-      },
-      {
-        title: '2. PENAMBAHAN DANA & PUNGUTAN PAJAK 2026',
-        badge: 'Penerimaan',
-        groups: [
-          {
-            subtitle: 'Alokasi Dana & Jasa Giro',
-            fields: [
-              { col: 15, label: 'Alokasi BOS Reguler' }, { col: 16, label: 'Alokasi BOS Kinerja' },
-              { col: 17, label: 'SiLPA BOS Kinerja' }, { col: 18, label: 'Alokasi BOS Afirmasi' },
-              { col: 19, label: 'SiLPA BOS Afirmasi' }, { col: 20, label: 'Dana Lainnya' },
-              { col: 21, label: 'Bunga Bank / Jasa Giro' }
-            ]
-          },
-          {
-            subtitle: 'Potongan dan Pungutan Pajak 2026',
-            fields: [
-              { col: 22, label: 'Pungutan PPN 2026' }, { col: 23, label: 'Pungutan PPh 21 2026' },
-              { col: 24, label: 'Pungutan PPh 23 2026' }, { col: 25, label: 'Pungutan SSPD / Pajak Daerah 2026' }
-            ]
-          }
-        ]
-      },
-      {
-        title: '3. PENARIKAN TUNAI & BELANJA NON-TUNAI CMS/TRANSFER',
-        badge: 'Mutasi Kas & Bank',
-        groups: [
-          {
-            subtitle: 'Penarikan Tunai',
-            fields: [
-              { col: 27, label: 'Tarik Tunai BOS Reguler' }, { col: 28, label: 'Tarik Tunai BOS Kinerja inc. SiLPA' },
-              { col: 29, label: 'Tarik Tunai BOS Afirmasi inc. SiLPA' }, { col: 30, label: 'Tarik Tunai Dana Lainnya' }
-            ]
-          },
-          {
-            subtitle: 'Belanja Non-Tunai CMS / Transfer',
-            fields: [
-              { col: 32, label: 'Non-Tunai BOS Reguler' }, { col: 33, label: 'Non-Tunai BOS Kinerja inc. SiLPA' },
-              { col: 34, label: 'Non-Tunai BOS Afirmasi inc. SiLPA' }, { col: 35, label: 'Non-Tunai Dana Lainnya' }
-            ]
-          }
-        ]
-      },
-      {
-        title: '4. PENGURANGAN / REALISASI BELANJA & SETORAN PAJAK',
-        badge: 'Belanja & Setoran',
-        groups: [
-          {
-            subtitle: 'Belanja Operasi',
-            fields: [
-              { col: 37, label: 'Belanja Operasi - BOS Reguler' }, { col: 38, label: 'Belanja Operasi - BOS Kinerja' },
-              { col: 39, label: 'Belanja Operasi - SiLPA Kinerja' }, { col: 40, label: 'Belanja Operasi - BOS Afirmasi' },
-              { col: 41, label: 'Belanja Operasi - SiLPA Afirmasi' }, { col: 42, label: 'Belanja Operasi - Dana Lainnya' }
-            ]
-          },
-          {
-            subtitle: 'Belanja Modal Peralatan dan Mesin',
-            fields: [
-              { col: 43, label: 'Modal Mesin - BOS Reguler' }, { col: 44, label: 'Modal Mesin - BOS Kinerja' },
-              { col: 45, label: 'Modal Mesin - SiLPA Kinerja' }, { col: 46, label: 'Modal Mesin - BOS Afirmasi' },
-              { col: 47, label: 'Modal Mesin - SiLPA Afirmasi' }, { col: 48, label: 'Modal Mesin - Dana Lainnya' }
-            ]
-          },
-          {
-            subtitle: 'Belanja Modal Aset Tetap Lainnya',
-            fields: [
-              { col: 49, label: 'Modal Aset - BOS Reguler' }, { col: 50, label: 'Modal Aset - BOS Kinerja' },
-              { col: 51, label: 'Modal Aset - SiLPA Kinerja' }, { col: 52, label: 'Modal Aset - BOS Afirmasi' },
-              { col: 53, label: 'Modal Aset - SiLPA Afirmasi' }, { col: 54, label: 'Modal Aset - Dana Lainnya' }
-            ]
-          },
-          {
-            subtitle: 'Pengeluaran Bank & Setoran Pajak',
-            fields: [
-              { col: 55, label: 'Setoran Giro' }, { col: 56, label: 'Administrasi / Pajak Bank' },
-              { col: 57, label: 'Pengembalian Dana ke RKUD' },
-              { col: 58, label: 'Setor Pajak 19/25 - PPN' }, { col: 59, label: 'Setor Pajak 19/25 - PPh 21' },
-              { col: 60, label: 'Setor Pajak 19/25 - PPh 23' }, { col: 61, label: 'Setor Pajak 19/25 - SSPD' },
-              { col: 62, label: 'Setor Pajak 2026 - PPN' }, { col: 63, label: 'Setor Pajak 2026 - PPh 21' },
-              { col: 64, label: 'Setor Pajak 2026 - PPh 23' }, { col: 65, label: 'Setor Pajak 2026 - SSPD' }
-            ]
-          }
-        ]
+    // Deteksi otomatis saat mengetik 'superadmin' -> munculkan kolom wajib Nama Petugas
+    document.getElementById('loginUsername').addEventListener('input', function() {
+      const val = this.value.trim().toLowerCase();
+      const wrap = document.getElementById('petugasFieldWrapper');
+      if (val === 'superadmin') {
+        wrap.classList.remove('hidden');
+      } else {
+        wrap.classList.add('hidden');
       }
-    ];
-
-    document.addEventListener('DOMContentLoaded', () => {
-      if (window.lucide) lucide.createIcons();
-      buildRekonFormUI();
     });
 
-    function showLoader(msg) {
-      document.getElementById('loaderText').textContent = msg || 'Memproses data...';
-      document.getElementById('globalLoader').classList.remove('hidden');
-    }
-    function hideLoader() {
-      document.getElementById('globalLoader').classList.add('hidden');
-    }
-
-    function showToast(msg, type = 'success') {
-      const box = document.getElementById('toastBox');
-      const el = document.createElement('div');
-      const colors = type === 'error' ? 'bg-rose-600 text-white' : (type === 'warning' ? 'bg-amber-500 text-slate-950' : 'bg-[#051d3b] text-white border border-amber-400/40');
-      el.className = `${colors} px-4 py-3 rounded-xl shadow-xl text-xs font-bold flex items-center gap-2.5`;
-      el.innerHTML = `<span>${msg}</span>`;
-      box.appendChild(el);
-      setTimeout(() => el.remove(), 4500);
-    }
-
-    function parseIndoNumber(raw) {
-      if (typeof raw === 'number') return isNaN(raw) ? 0 : Math.round((raw + Number.EPSILON) * 100) / 100;
-      let str = String(raw || '').trim().replace(/[^0-9,.-]/g, '');
-      if (!str) return 0;
-      if (str.includes(',') && str.includes('.')) str = str.replace(/\./g, '').replace(',', '.');
-      else if (str.includes(',')) str = str.replace(',', '.');
-      else if ((str.match(/\./g) || []).length > 1) str = str.replace(/\./g, '');
-      const num = parseFloat(str);
-      return isNaN(num) ? 0 : Math.round((num + Number.EPSILON) * 100) / 100;
-    }
-
-    function formatIndoNumber(num) {
-      return parseIndoNumber(num).toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-
-    function formatRp(num) {
-      return 'Rp ' + formatIndoNumber(num);
-    }
-
-    function togglePassVisibility() {
-      const inp = document.getElementById('loginPass');
-      inp.type = inp.type === 'password' ? 'text' : 'password';
-    }
-
-    function handleLogin(e) {
+    // Submit Login
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
       e.preventDefault();
-      const u = document.getElementById('loginUser').value;
-      const p = document.getElementById('loginPass').value;
-      showLoader('Memverifikasi kredensial & menyiapkan ruang kerja SMART-BOS...');
-      google.script.run
-        .withSuccessHandler(res => {
-          if (!res || !res.success) { hideLoader(); showToast((res && res.message) ? res.message : 'Login gagal.', 'error'); return; }
-          STATE.user = res.user;
-          loadDashboardBoot();
-        })
-        .withFailureHandler(err => { hideLoader(); showToast('Error Server: ' + err.message, 'error'); })
-        .loginUser(u, p);
-    }
+      const username = document.getElementById('loginUsername').value.trim();
+      const password = document.getElementById('loginPassword').value.trim();
+      const petugas = document.getElementById('loginPetugasName').value.trim();
 
-    function loadDashboardBoot() {
+      if (username.toLowerCase() === 'superadmin' && !petugas) {
+        showToast('Harap isi Nama Petugas Verifikator terlebih dahulu!', 'error');
+        return;
+      }
+
+      showLoader('Memverifikasi akun...');
       google.script.run
-        .withSuccessHandler(data => {
+        .withSuccessHandler(function(res) {
           hideLoader();
-          STATE.bulanList = data.bulanList;
-          STATE.kecamatanList = data.kecamatanList;
-          STATE.aksesList = data.aksesList;
-          STATE.dokumenList = data.dokumenList;
-          STATE.usersList = data.usersList;
-
-          document.getElementById('loginView').classList.add('hidden');
-          document.getElementById('appShell').classList.remove('hidden');
-          document.getElementById('navUserName').textContent = STATE.user.namaLengkap;
-          const roleLabels = {
-            'SUPER_ADMIN': 'SUPER ADMIN KABUPATEN',
-            'ADMIN_KEC': 'ADMIN ' + STATE.user.kecamatan.toUpperCase(),
-            'SEKOLAH': 'AKUN SEKOLAH • ' + STATE.user.kecamatan
-          };
-          document.getElementById('navUserBadge').textContent = roleLabels[STATE.user.role] || STATE.user.role;
-
-          setupNavigationTabs();
-          populateDropdowns();
-
-          if (STATE.user.role === 'SEKOLAH') {
-            switchTab('panelInputRekon');
-            loadSchoolMonthForm();
-          } else {
-            switchTab('panelAdminMonitoring');
-            loadAdminMonitoring(true);
+          if (!res.success) {
+            showToast(res.message, 'error');
+            return;
           }
+          CURRENT_USER = res.user;
+          initAfterLogin();
         })
-        .withFailureHandler(err => { hideLoader(); showToast('Gagal memuat dashboard: ' + err.message, 'error'); })
-        .getInitialDashboardData(STATE.user);
+        .withFailureHandler(function(err) {
+          hideLoader();
+          showToast('Terjadi kesalahan koneksi: ' + err.message, 'error');
+        })
+        .loginUser(username, password, petugas);
+    });
+
+    function initAfterLogin() {
+      document.getElementById('loginSection').classList.add('hidden');
+      document.getElementById('mainAppWrapper').classList.remove('hidden');
+      document.getElementById('navInstansiName').textContent = CURRENT_USER.namaInstansi;
+
+      const selSekolah = document.getElementById('sekolahBulanSelect');
+      const selAdmin = document.getElementById('adminBulanSelect');
+      selSekolah.innerHTML = BULAN_LIST.map(b => `<option value="${b}">${b} 2026</option>`).join('');
+      selAdmin.innerHTML = BULAN_LIST.map(b => `<option value="${b}">${b} 2026</option>`).join('');
+
+      if (CURRENT_USER.role === 'SEKOLAH') {
+        document.getElementById('navRoleBadge').textContent = `AKUN SEKOLAH (${CURRENT_USER.kodeSekolah.toUpperCase()}) • Kec. ${CURRENT_USER.kecamatan}`;
+        document.getElementById('sekolahView').classList.remove('hidden');
+        document.getElementById('adminDashboardView').classList.add('hidden');
+        loadSekolahData();
+      } else {
+        document.getElementById('sekolahView').classList.add('hidden');
+        document.getElementById('adminDashboardView').classList.remove('hidden');
+
+        const kecSelect = document.getElementById('adminKecamatanSelect');
+
+        if (CURRENT_USER.role === 'SUPER_ADMIN') {
+          document.getElementById('navRoleBadge').textContent = 'SUPER ADMIN • Petugas: ' + CURRENT_USER.petugasName;
+          document.getElementById('btnDownloadExcelBA').classList.remove('hidden');
+          document.getElementById('tabBtnRevisi').classList.remove('hidden');
+          document.getElementById('adminReadOnlyNotice').classList.add('hidden');
+          kecSelect.value = 'SEMUA';
+          kecSelect.disabled = false;
+        } else {
+          // Akun ADMIN_KEC (admin.botumoito, admin.tilamuta, dll.)
+          document.getElementById('navRoleBadge').textContent = 'ADMIN KECAMATAN • Kec. ' + CURRENT_USER.kecamatan;
+          document.getElementById('btnDownloadExcelBA').classList.add('hidden');
+          document.getElementById('tabBtnRevisi').classList.add('hidden');
+          document.getElementById('adminReadOnlyNotice').classList.remove('hidden');
+          document.getElementById('adminReadOnlyText').innerHTML = `Anda masuk sebagai <b>Admin Kecamatan ${CURRENT_USER.kecamatan} (Pemantauan)</b>. Anda hanya memantau daftar sekolah di Kecamatan ${CURRENT_USER.kecamatan} dan tidak memiliki hak audit/pengesahan.`;
+          kecSelect.value = CURRENT_USER.kecamatan;
+          kecSelect.disabled = true;
+        }
+        loadAdminDashboard();
+      }
     }
 
     function logoutApp() {
-      STATE.user = null;
-      STATE.monitoringRows = [];
-      STATE.auditLogsCache = null;
-      document.getElementById('appShell').classList.add('hidden');
-      document.getElementById('loginView').classList.remove('hidden');
-      document.getElementById('loginPass').value = '';
+      CURRENT_USER = null;
+      document.getElementById('mainAppWrapper').classList.add('hidden');
+      document.getElementById('loginSection').classList.remove('hidden');
+      document.getElementById('loginPassword').value = '';
     }
 
-    function setupNavigationTabs() {
-      const container = document.getElementById('navTabsContainer');
-      const tabs = STATE.user.role === 'SEKOLAH'
-        ? [
-            { id: 'panelInputRekon', label: 'Input Rekonsiliasi & Upload BKU', icon: 'calculator' },
-            { id: 'panelDokumen', label: 'Arsip Dokumen Saya', icon: 'folder-open' }
-          ]
-        : [
-            { id: 'panelAdminMonitoring', label: 'Live Review & Status Centang', icon: 'check-square' },
-            { id: 'panelInputRekon', label: 'Audit & Cocokkan Dokumen (Split-Screen)', icon: 'columns' },
-            { id: 'panelDokumen', label: 'Semua Dokumen Sekolah', icon: 'folder-check' },
-            { id: 'panelUsers', label: 'Manajemen Akun', icon: 'users' },
-            ...(STATE.user.role === 'SUPER_ADMIN' ? [{ id: 'panelAuditLog', label: 'Audit Log', icon: 'history' }] : [])
-          ];
-
-      container.innerHTML = tabs.map(t => `
-        <button onclick="switchTab('${t.id}')" id="tabBtn_${t.id}" class="nav-tab-btn px-3.5 py-2 rounded-xl text-xs font-extrabold flex items-center gap-2 whitespace-nowrap text-slate-600 hover:bg-slate-100 transition">
-          <i data-lucide="${t.icon}" class="w-4 h-4"></i> ${t.label}
-        </button>
-      `).join('');
-      if (window.lucide) lucide.createIcons();
-    }
-
-    function switchTab(panelId) {
-      ['panelInputRekon', 'panelAdminMonitoring', 'panelDokumen', 'panelUsers', 'panelAuditLog'].forEach(id => document.getElementById(id).classList.add('hidden'));
-      document.querySelectorAll('.nav-tab-btn').forEach(b => b.classList.remove('tab-pill-active'));
-      document.getElementById(panelId).classList.remove('hidden');
-      const activeBtn = document.getElementById('tabBtn_' + panelId);
-      if (activeBtn) activeBtn.classList.add('tab-pill-active');
-
-      if (panelId === 'panelDokumen') renderAllDocsTable();
-      if (panelId === 'panelUsers') renderUsersTable();
-      if (panelId === 'panelAuditLog') {
-        if (STATE.auditLogsCache) renderAuditLogs(STATE.auditLogsCache);
-        else loadAuditLogTable(false);
-      }
-      if (panelId === 'panelInputRekon' && STATE.user.role !== 'SEKOLAH' && STATE.currentFormValues[0] === 0) loadSchoolMonthForm();
-    }
-
-    function populateDropdowns() {
-      const mOpts = STATE.bulanList.map(b => `<option value="${b.kode}">${b.urutan}. ${b.nama} 2026 (${b.kode})</option>`).join('');
-      document.getElementById('monthSelect').innerHTML = mOpts;
-      document.getElementById('monMonthSelect').innerHTML = mOpts;
-
-      if (STATE.user.role !== 'SEKOLAH') {
-        document.getElementById('adminSchoolPickerWrap').classList.remove('hidden');
-        document.getElementById('btnAdminVerifyToggle').classList.remove('hidden');
-        document.getElementById('adminSchoolSelect').innerHTML = STATE.aksesList.map(s => `<option value="${s.sekolahNo}">${String(s.sekolahNo).padStart(3, '0')} - ${s.namaSekolah}</option>`).join('');
-
-        const kecSelect = document.getElementById('monKecSelect');
-        kecSelect.innerHTML = STATE.user.role === 'SUPER_ADMIN'
-          ? `<option value="ALL">Semua Kecamatan (7 Kec.)</option>` + STATE.kecamatanList.map(k => `<option value="${k}">${k}</option>`).join('')
-          : `<option value="${STATE.user.kecamatan}">${STATE.user.kecamatan}</option>`;
-      }
-    }
-
-    function buildRekonFormUI() {
-      const container = document.getElementById('rekonSectionsContainer');
-      let html = '';
-      FORM_SECTIONS.forEach(sec => {
-        html += `<details open class="glass-card rounded-2xl overflow-hidden"><summary class="px-4 py-3.5 bg-gradient-to-r from-[#051d3b] to-[#0B4F9F] text-white font-extrabold text-xs cursor-pointer flex items-center justify-between"><span>${sec.title}</span><span class="px-2.5 py-0.5 rounded-full text-[10px] bg-amber-400 text-slate-950 font-extrabold">${sec.badge}</span></summary><div class="p-4 space-y-4">`;
-        sec.groups.forEach(grp => {
-          html += `<div><h4 class="text-[11px] font-extrabold uppercase tracking-wider text-[#0B4F9F] mb-2 border-b border-slate-200 pb-1">${grp.subtitle}</h4><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">`;
-          grp.fields.forEach(f => {
-            html += `<div class="bg-slate-50 p-2 rounded-xl border border-slate-200"><label class="block text-[11px] font-bold text-slate-700 mb-1">${f.label}</label><input type="text" inputmode="decimal" id="inp_c${f.col}" data-col="${f.col}" value="0,00" onfocus="handleNumFocus(this)" onblur="handleNumBlur(this)" oninput="recalculateLiveForm()" class="num-input rekon-field" /></div>`;
-          });
-          html += `</div></div>`;
-        });
-        html += `</div></details>`;
-      });
-
-      html += `
-        <details open class="glass-card rounded-2xl overflow-hidden border-2 border-[#0284C7]">
-          <summary class="px-4 py-3.5 bg-[#0284C7] text-white font-extrabold text-xs cursor-pointer flex items-center justify-between">
-            <span>5. HASIL PERHITUNGAN OTOMATIS SALDO AKHIR &amp; PAJAK</span>
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] bg-white text-[#0B4F9F] font-extrabold">Otomatis Rumus</span>
-          </summary>
-          <div class="p-4 space-y-4 bg-sky-50/40">
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div class="bg-white p-3 rounded-xl border border-blue-200 space-y-1"><p class="text-xs font-extrabold text-[#0B4F9F]">Saldo Akhir BOS Reguler</p><div class="flex justify-between text-xs"><span>Saldo BKU:</span><span id="out_c67" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Tunai:</span><span id="out_c68" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Bank:</span><span id="out_c69" class="font-bold">0,00</span></div></div>
-              <div class="bg-white p-3 rounded-xl border border-blue-200 space-y-1"><p class="text-xs font-extrabold text-[#0B4F9F]">Saldo Akhir BOS Kinerja (inc. SiLPA)</p><div class="flex justify-between text-xs"><span>Saldo BKU:</span><span id="out_c70" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Tunai:</span><span id="out_c71" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Bank:</span><span id="out_c72" class="font-bold">0,00</span></div></div>
-              <div class="bg-white p-3 rounded-xl border border-blue-200 space-y-1"><p class="text-xs font-extrabold text-[#0B4F9F]">Saldo Akhir BOS Afirmasi (inc. SiLPA)</p><div class="flex justify-between text-xs"><span>Saldo BKU:</span><span id="out_c73" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Tunai:</span><span id="out_c74" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Bank:</span><span id="out_c75" class="font-bold">0,00</span></div></div>
-              <div class="bg-white p-3 rounded-xl border border-blue-200 space-y-1"><p class="text-xs font-extrabold text-[#0B4F9F]">Saldo Akhir Dana Lainnya</p><div class="flex justify-between text-xs"><span>Saldo BKU:</span><span id="out_c76" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Tunai:</span><span id="out_c77" class="font-bold">0,00</span></div><div class="flex justify-between text-xs"><span>Saldo Bank:</span><span id="out_c78" class="font-bold">0,00</span></div></div>
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div class="bg-white p-3 rounded-xl border border-amber-200 space-y-1.5"><p class="text-xs font-extrabold text-amber-800">Uraian Saldo Pajak 2026 (Belum Setor)</p><div class="grid grid-cols-2 gap-1.5 text-xs"><div class="flex justify-between bg-amber-50 p-1.5 rounded"><span>PPN:</span><span id="out_c83" class="font-bold">0,00</span></div><div class="flex justify-between bg-amber-50 p-1.5 rounded"><span>PPh 21:</span><span id="out_c84" class="font-bold">0,00</span></div><div class="flex justify-between bg-amber-50 p-1.5 rounded"><span>PPh 23:</span><span id="out_c85" class="font-bold">0,00</span></div><div class="flex justify-between bg-amber-50 p-1.5 rounded"><span>SSPD:</span><span id="out_c86" class="font-bold">0,00</span></div></div></div>
-              <div class="bg-white p-3 rounded-xl border border-slate-200 space-y-1.5"><p class="text-xs font-extrabold text-slate-800">Uraian Saldo Pajak 2019/2025 (Belum Setor)</p><div class="grid grid-cols-2 gap-1.5 text-xs"><div class="flex justify-between bg-slate-50 p-1.5 rounded"><span>PPN:</span><span id="out_c87" class="font-bold">0,00</span></div><div class="flex justify-between bg-slate-50 p-1.5 rounded"><span>PPh 21:</span><span id="out_c88" class="font-bold">0,00</span></div><div class="flex justify-between bg-slate-50 p-1.5 rounded"><span>PPh 23:</span><span id="out_c89" class="font-bold">0,00</span></div><div class="flex justify-between bg-slate-50 p-1.5 rounded"><span>SSPD:</span><span id="out_c90" class="font-bold">0,00</span></div></div></div>
-            </div>
-          </div>
-        </details>`;
-      container.innerHTML = html;
-    }
-
-    function handleNumFocus(inp) {
-      const val = parseIndoNumber(inp.value);
-      inp.value = val === 0 ? '' : String(val).replace('.', ',');
-    }
-
-    function handleNumBlur(inp) {
-      inp.value = formatIndoNumber(parseIndoNumber(inp.value));
-      recalculateLiveForm();
-    }
-
-    function loadSchoolMonthForm() {
-      const bulanKode = document.getElementById('monthSelect').value;
-      const sekolahNo = STATE.user.role === 'SEKOLAH' ? STATE.user.sekolahNo : Number(document.getElementById('adminSchoolSelect').value);
-      showLoader('Memuat rincian & dokumen bulan ' + bulanKode + '...');
+    // ==================== FUNGSI AKUN SEKOLAH ====================
+    function loadSekolahData() {
+      const bulan = document.getElementById('sekolahBulanSelect').value;
+      showLoader('Memuat data bulan ' + bulan + '...');
       google.script.run
-        .withSuccessHandler(res => {
+        .withSuccessHandler(function(res) {
           hideLoader();
-          STATE.currentFormValues = res.values;
-          STATE.currentFormDocs = res.dokumen || [];
-          STATE.currentStatusVerif = res.statusVerif || 'BELUM';
-          STATE.prevSaldoAkhir = res.prevSaldoAkhir;
-
-          document.getElementById('formSchoolTitle').textContent = `${String(res.sekolahNo).padStart(3, '0')} — ${res.namaSekolah}`;
-          const locked = (STATE.user.role === 'SEKOLAH' && res.statusAkses !== 'TERBUKA');
-
-          const badge = document.getElementById('formLockBadge');
-          badge.textContent = locked ? 'TERKUNCI' : (res.statusAkses === 'TERBUKA' ? 'TERBUKA' : 'MODE AUDIT ADMIN');
-          badge.className = locked ? 'px-3 py-0.5 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800' : 'px-3 py-0.5 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800';
-
-          updateVerifyBadgeUI(STATE.currentStatusVerif);
-
-          document.querySelectorAll('.rekon-field').forEach(inp => {
-            const col = Number(inp.dataset.col);
-            inp.value = formatIndoNumber(res.values[col - 1] || 0);
-            inp.disabled = locked;
-          });
-
-          document.getElementById('btnSaveMonth').disabled = locked;
-          document.getElementById('btnResetMonth').disabled = locked;
-          document.getElementById('btnSaveMonth').classList.toggle('opacity-50', locked);
-          document.getElementById('btnResetMonth').classList.toggle('opacity-50', locked);
-
-          const btnPrev = document.getElementById('btnPullPrevSaldo');
-          if (res.prevSaldoAkhir && !locked) btnPrev.classList.remove('hidden');
-          else btnPrev.classList.add('hidden');
-
-          renderFormDocs(STATE.currentFormDocs);
-          recalculateLiveForm();
-          if (STATE.currentFormDocs.length > 0) openSplitDocPreview(STATE.currentFormDocs[0].docId);
-          else resetSplitDocPreview();
+          CURRENT_SEKOLAH_DATA = res;
+          renderSekolahState(res, bulan);
         })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .getSchoolMonthData(STATE.user, sekolahNo, bulanKode);
+        .withFailureHandler(function(err) {
+          hideLoader();
+          showToast('Gagal memuat data: ' + err.message, 'error');
+        })
+        .getSekolahMonthData(CURRENT_USER.kodeSekolah, bulan);
     }
 
-    function updateVerifyBadgeUI(status) {
-      const vBadge = document.getElementById('formVerifBadge');
-      const vBtnText = document.getElementById('btnAdminVerifyText');
-      if (status === 'TERVERIFIKASI') {
-        vBadge.textContent = '✓ TERVERIFIKASI';
-        vBadge.className = 'px-3 py-0.5 rounded-full text-xs font-extrabold bg-emerald-600 text-white';
-        if (vBtnText) vBtnText.textContent = 'Batalkan Centang';
+    function renderSekolahState(res, bulan) {
+      const miniWrap = document.getElementById('sekolahMini12Months');
+      miniWrap.innerHTML = res.status12Bulan.map(m => {
+        let cls = 'bg-slate-100 text-slate-500 border-slate-200';
+        if (m.status === 'TERVERIFIKASI') cls = 'bg-emerald-100 text-emerald-800 border-emerald-300';
+        else if (m.status === 'MENUNGGU_REKON') cls = 'bg-amber-100 text-amber-800 border-amber-300';
+        const activeRing = m.bulan === bulan ? 'ring-2 ring-blue-800' : '';
+        return `<button type="button" onclick="pilihBulanCepat('${m.bulan}')" class="px-2 py-1 rounded-lg text-[10px] font-bold border ${cls} ${activeRing}">${m.bulan.substring(0,3)}</button>`;
+      }).join('');
+
+      const d = res.data;
+      const isLocked = d ? d.isLocked : false;
+      const carryNote = document.getElementById('autoCarryNote');
+      carryNote.classList.add('hidden');
+
+      const fields = [
+        'saTunai','saBank','saPajakTerhutang',
+        'terimaBosTahap1','terimaBosTahap2','terimaJasaGiro','pungutPajak',
+        'tarikTunai','belanjaNonTunai',
+        'belanjaPegawai','belanjaBarangJasa','belanjaModal','setorPajak','setorJasaGiro'
+      ];
+
+      if (d) {
+        fields.forEach(f => { document.getElementById('inp_' + f).value = d[f] || 0; });
       } else {
-        vBadge.textContent = '⏳ BELUM DIVERIFIKASI';
-        vBadge.className = 'px-3 py-0.5 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800';
-        if (vBtnText) vBtnText.textContent = 'Centang Terverifikasi';
+        fields.forEach(f => { document.getElementById('inp_' + f).value = 0; });
+        if (res.prevMonthSaldo && res.prevMonthSaldo.sourceBulan) {
+          document.getElementById('inp_saTunai').value = res.prevMonthSaldo.saTunai;
+          document.getElementById('inp_saBank').value = res.prevMonthSaldo.saBank;
+          document.getElementById('inp_saPajakTerhutang').value = res.prevMonthSaldo.saPajakTerhutang;
+          carryNote.classList.remove('hidden');
+          carryNote.innerHTML = `<i class="fa-solid fa-wand-magic-sparkles mr-1"></i> Saldo Awal otomatis ditarik dari Saldo Akhir bulan <b>${res.prevMonthSaldo.sourceBulan}</b>. Silakan sesuaikan jika perlu.`;
+        }
       }
-    }
 
-    function toggleCurrentSchoolVerify() {
-      const sekolahNo = Number(document.getElementById('adminSchoolSelect').value);
-      const bulanKode = document.getElementById('monthSelect').value;
-      const nextStatus = STATE.currentStatusVerif === 'TERVERIFIKASI' ? 'BELUM' : 'TERVERIFIKASI';
-      showLoader('Memperbarui status centang verifikasi...');
-      google.script.run
-        .withSuccessHandler(res => {
-          hideLoader();
-          if (!res.success) { showToast(res.message, 'error'); return; }
-          STATE.currentStatusVerif = nextStatus;
-          updateVerifyBadgeUI(nextStatus);
-          showToast(res.message, 'success');
-        })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .toggleVerifySchoolMonth(STATE.user, sekolahNo, bulanKode, nextStatus);
-    }
-
-    function applyPrevMonthSaldo() {
-      if (!STATE.prevSaldoAkhir) return;
-      const p = STATE.prevSaldoAkhir;
-      const map = { c3: p.c3, c4: p.c4, c5: p.c5, c6: p.c6, c7: p.c7, c8: p.c8, c9: p.c9, c10: p.c10, c11: p.c11, c12: p.c12, c13: p.c13, c14: p.c14 };
-      Object.keys(map).forEach(k => { const el = document.getElementById('inp_' + k); if (el) el.value = formatIndoNumber(map[k]); });
-      recalculateLiveForm();
-      showToast('Saldo Akhir bulan ' + p.bulanNama + ' berhasil ditarik ke Saldo Awal!');
-    }
-
-    function recalculateLiveForm() {
-      const v = new Array(91).fill(0);
-      document.querySelectorAll('.rekon-field').forEach(inp => v[Number(inp.dataset.col)] = parseIndoNumber(inp.value));
-      for (let c = 15; c <= 25; c++) v[26] += v[c];
-      for (let c = 37; c <= 65; c++) v[66] += v[c];
-
-      v[68] = (v[3] + v[27] + v[32]) - (v[37] + v[43] + v[49]);
-      v[69] = (v[4] + v[15] + v[21]) - (v[27] + v[32] + v[55] + v[56] + v[57]);
-      v[67] = v[68] + v[69];
-
-      v[71] = (v[5] + v[28] + v[33]) - (v[38] + v[39] + v[44] + v[45] + v[50] + v[51]);
-      v[72] = (v[6] + v[16] + v[17]) - (v[28] + v[33]);
-      v[70] = v[71] + v[72];
-
-      v[74] = (v[7] + v[29] + v[34]) - (v[40] + v[41] + v[46] + v[47] + v[52] + v[53]);
-      v[75] = (v[8] + v[18] + v[19]) - (v[29] + v[34]);
-      v[73] = v[74] + v[75];
-
-      v[77] = (v[9] + v[30] + v[35]) - (v[42] + v[48] + v[54]);
-      v[78] = (v[10] + v[20]) - (v[30] + v[35]);
-      v[76] = v[77] + v[78];
-
-      v[79] = v[67] + v[70] + v[73] + v[76];
-      v[80] = v[68] + v[71] + v[74] + v[77];
-      v[81] = v[69] + v[72] + v[75] + v[78];
-
-      v[83] = v[22] - v[62]; v[84] = v[23] - v[63]; v[85] = v[24] - v[64]; v[86] = v[25] - v[65];
-      v[87] = v[11] - v[58]; v[88] = v[12] - v[59]; v[89] = v[13] - v[60]; v[90] = v[14] - v[61];
-      v[82] = v[83] + v[84] + v[85] + v[86] + v[87] + v[88] + v[89] + v[90];
-
-      document.getElementById('sumPenambahan').textContent = formatRp(v[26]);
-      document.getElementById('sumPengurangan').textContent = formatRp(v[66]);
-      document.getElementById('sumTotalBKU').textContent = formatRp(v[79]);
-      document.getElementById('sumTunaiBank').innerHTML = `T: ${formatRp(v[80])}<br/>B: ${formatRp(v[81])}`;
-      document.getElementById('sumTotalPajak').textContent = formatRp(v[82]);
-
-      [67,68,69,70,71,72,73,74,75,76,77,78,83,84,85,86,87,88,89,90].forEach(c => {
-        const el = document.getElementById('out_c' + c);
-        if (el) el.textContent = formatIndoNumber(v[c]);
+      document.querySelectorAll('.rekon-input').forEach(inp => {
+        inp.disabled = isLocked;
+        if (isLocked) inp.classList.add('input-locked');
+        else inp.classList.remove('input-locked');
       });
+
+      document.getElementById('uploadControlBar').style.display = isLocked ? 'none' : 'grid';
+      renderTabelDokumenSekolah(res.dokumenList, isLocked);
+
+      const statusBadge = document.getElementById('sekolahStatusBadge');
+      const alertBanner = document.getElementById('sekolahAlertBanner');
+      const alertIcon = document.getElementById('sekolahAlertIcon');
+      const alertTitle = document.getElementById('sekolahAlertTitle');
+      const alertDesc = document.getElementById('sekolahAlertDesc');
+      const catatanBox = document.getElementById('sekolahCatatanVerifBox');
+      const alertActions = document.getElementById('sekolahAlertActions');
+      const btnGroup = document.getElementById('sekolahFormButtonGroup');
+
+      alertBanner.classList.add('hidden');
+      catatanBox.classList.add('hidden');
+      alertActions.innerHTML = '';
+
+      if (!d) {
+        statusBadge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800';
+        statusBadge.textContent = 'Belum Input Data';
+        btnGroup.innerHTML = `
+          <button type="button" onclick="resetFormAngka()" class="px-4 py-2.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl"><i class="fa-solid fa-trash-can mr-1"></i> Kosongkan</button>
+          <button type="submit" class="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-extrabold rounded-xl shadow-lg"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Rekonsiliasi</button>
+        `;
+      } else {
+        alertBanner.classList.remove('hidden');
+        if (d.catatanVerifikator) {
+          catatanBox.classList.remove('hidden');
+          catatanBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-amber-600 mr-1"></i> <b>Catatan Verifikator Dinas:</b> ${d.catatanVerifikator}`;
+        }
+
+        if (d.statusRekon === 'TERVERIFIKASI') {
+          statusBadge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800';
+          statusBadge.textContent = 'SUDAH DIREKON (SAH)';
+          alertBanner.className = 'rounded-2xl p-4 border border-emerald-300 bg-emerald-50 text-emerald-950 flex flex-wrap items-center justify-between gap-3';
+          alertIcon.innerHTML = '<i class="fa-solid fa-circle-check text-emerald-600"></i>';
+          alertTitle.textContent = 'Rekonsiliasi Bulan ' + bulan + ' Telah Disahkan oleh Dinas Pendidikan Kab. Boalemo';
+          alertDesc.textContent = `Diverifikasi oleh ${d.verifikatorNama} pada ${d.verifikatorTgl} • Kode Sah: ${d.kodePengesahan}`;
+          alertActions.innerHTML = `
+            <button type="button" onclick="cetakBuktiSahPDF()" class="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-extrabold rounded-xl shadow">
+              <i class="fa-solid fa-print mr-1"></i> Cetak Bukti Sah Rekon (PDF)
+            </button>
+          `;
+        } else if (isLocked) {
+          statusBadge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-800';
+          statusBadge.textContent = 'Terkunci • Menunggu Rekon';
+          alertBanner.className = 'rounded-2xl p-4 border border-amber-300 bg-amber-50 text-amber-950 flex flex-wrap items-center justify-between gap-3';
+          alertIcon.innerHTML = '<i class="fa-solid fa-lock text-amber-600"></i>';
+          alertTitle.textContent = 'Data Bulan ' + bulan + ' Terkunci Otomatis';
+          alertDesc.textContent = d.revisiStatus === 'DIAJUKAN'
+            ? 'Permohonan izin revisi Anda sedang menunggu persetujuan Super Admin.'
+            : 'Jika terdapat kekeliruan angka, Anda wajib mengajukan izin perubahan data ke Super Admin.';
+        } else {
+          statusBadge.className = 'px-3 py-1 rounded-full text-xs font-extrabold bg-sky-100 text-sky-800';
+          statusBadge.textContent = 'Kunci Dibuka • Silakan Perbaiki';
+          alertBanner.className = 'rounded-2xl p-4 border border-sky-300 bg-sky-50 text-sky-950 flex flex-wrap items-center justify-between gap-3';
+          alertIcon.innerHTML = '<i class="fa-solid fa-lock-open text-sky-600"></i>';
+          alertTitle.textContent = 'Izin Revisi Disetujui Super Admin!';
+          alertDesc.textContent = 'Silakan perbaiki angka yang keliru lalu tekan Simpan Rekonsiliasi kembali (form akan terkunci otomatis setelah disimpan).';
+        }
+
+        if (isLocked) {
+          btnGroup.innerHTML = d.revisiStatus === 'DIAJUKAN'
+            ? `<span class="px-4 py-2.5 bg-purple-100 text-purple-900 text-xs font-extrabold rounded-xl"><i class="fa-solid fa-hourglass-half mr-1"></i> Menunggu Izin Buka Kunci dari Super Admin</span>`
+            : `<button type="button" onclick="openModalAjukanRevisi()" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-blue-950 text-xs font-extrabold rounded-xl shadow"><i class="fa-solid fa-unlock-keyhole mr-1"></i> Ajukan Izin Perubahan Data</button>`;
+        } else {
+          btnGroup.innerHTML = `
+            <button type="submit" class="px-5 py-2.5 bg-blue-900 hover:bg-blue-800 text-white text-xs font-extrabold rounded-xl shadow-lg"><i class="fa-solid fa-floppy-disk mr-1"></i> Simpan Perubahan &amp; Kunci Kembali</button>
+          `;
+        }
+      }
+
+      hitungOtomatis();
     }
 
-    function handleSaveMonth() {
-      const bulanKode = document.getElementById('monthSelect').value;
-      const sekolahNo = STATE.user.role === 'SEKOLAH' ? STATE.user.sekolahNo : Number(document.getElementById('adminSchoolSelect').value);
-      const inputMap = {};
-      document.querySelectorAll('.rekon-field').forEach(inp => inputMap['c' + inp.dataset.col] = parseIndoNumber(inp.value));
-
-      showLoader('Menyimpan data rekonsiliasi SMART-BOS...');
-      google.script.run
-        .withSuccessHandler(res => {
-          hideLoader();
-          showToast(res.message, res.success ? 'success' : 'error');
-        })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .saveSchoolMonthData(STATE.user, sekolahNo, bulanKode, inputMap);
+    function pilihBulanCepat(b) {
+      document.getElementById('sekolahBulanSelect').value = b;
+      loadSekolahData();
     }
 
-    function handleResetMonth() {
-      if (!confirm('Yakin ingin mengosongkan seluruh angka inputan pada bulan ini menjadi 0,00?')) return;
-      const bulanKode = document.getElementById('monthSelect').value;
-      const sekolahNo = STATE.user.role === 'SEKOLAH' ? STATE.user.sekolahNo : Number(document.getElementById('adminSchoolSelect').value);
-      showLoader('Mengosongkan isian bulan ' + bulanKode + '...');
-      google.script.run
-        .withSuccessHandler(res => {
-          hideLoader();
-          showToast(res.message, res.success ? 'success' : 'error');
-          if (res.success) loadSchoolMonthForm();
-        })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .resetSchoolMonthData(STATE.user, sekolahNo, bulanKode);
+    function renderTabelDokumenSekolah(list, isLocked) {
+      const tbody = document.getElementById('tabelDokumenSekolah');
+      let hasArkas = false;
+      let hasManual = false;
+
+      if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="py-4 text-center text-slate-400">Belum ada dokumen bulan ini</td></tr>';
+      } else {
+        tbody.innerHTML = list.map(doc => {
+          if (doc.jenis.toUpperCase().includes('ARKAS')) hasArkas = true;
+          if (doc.jenis.toUpperCase().includes('MANUAL')) hasManual = true;
+          const delBtn = isLocked ? '' : `<button type="button" onclick="handleHapusDokumen('${doc.dokId}')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg font-bold"><i class="fa-solid fa-trash"></i></button>`;
+          return `
+            <tr>
+              <td class="py-2 px-3 font-bold text-slate-700">${doc.jenis}</td>
+              <td class="py-2 px-3 text-slate-600 truncate max-w-[160px]">${doc.namaFile}</td>
+              <td class="py-2 px-3 text-right space-x-1">
+                <button type="button" onclick="previewDokumenSide('${doc.previewUrl}','${doc.namaFile}')" class="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-800 rounded-lg font-bold"><i class="fa-solid fa-eye mr-1"></i>Pratinjau</button>
+                ${delBtn}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const bArkas = document.getElementById('badgeReqArkas');
+      const bManual = document.getElementById('badgeReqManual');
+      bArkas.className = hasArkas ? 'px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800' : 'px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700';
+      bArkas.innerHTML = hasArkas ? '<i class="fa-solid fa-check mr-1"></i>BKU Arkas (PDF)' : '<i class="fa-solid fa-xmark mr-1"></i>BKU Arkas (PDF)';
+      bManual.className = hasManual ? 'px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-100 text-emerald-800' : 'px-2 py-0.5 rounded text-[11px] font-bold bg-rose-100 text-rose-700';
+      bManual.innerHTML = hasManual ? '<i class="fa-solid fa-check mr-1"></i>BKU Manual (Excel)' : '<i class="fa-solid fa-xmark mr-1"></i>BKU Manual (Excel)';
     }
 
-    function handleUploadDoc() {
-      const fileInput = document.getElementById('docFileInput');
-      if (!fileInput.files || fileInput.files.length === 0) { showToast('Pilih file terlebih dahulu!', 'warning'); return; }
+    function previewDokumenSide(url, title) {
+      document.getElementById('viewerDocTitle').textContent = title;
+      const extLink = document.getElementById('viewerExternalLink');
+      extLink.href = url;
+      extLink.classList.remove('hidden');
+      document.getElementById('viewerContainer').innerHTML = `<iframe src="${url}" class="w-full h-full border-0 bg-white"></iframe>`;
+    }
+
+    function handleUploadDokumen() {
+      const fileInput = document.getElementById('fileDokumenInput');
+      const jenis = document.getElementById('jenisDokumenSelect').value;
+      const bulan = document.getElementById('sekolahBulanSelect').value;
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        showToast('Pilih file terlebih dahulu sebelum menekan Unggah!', 'error');
+        return;
+      }
+
       const file = fileInput.files[0];
-      if (file.size > 12 * 1024 * 1024) { showToast('Ukuran maksimal file 12 MB.', 'error'); return; }
+      if (file.size > 10 * 1024 * 1024) {
+        showToast('Ukuran file maksimal 10 MB!', 'error');
+        return;
+      }
 
-      const bulanKode = document.getElementById('monthSelect').value;
-      const jenisDokumen = document.getElementById('docJenisSelect').value;
-      const sekolahNo = STATE.user.role === 'SEKOLAH' ? STATE.user.sekolahNo : Number(document.getElementById('adminSchoolSelect').value);
-
-      showLoader('Mengunggah "' + file.name + '"...');
       const reader = new FileReader();
-      reader.onload = function(evt) {
-        const base64Data = evt.target.result.split(',')[1];
+      reader.onload = function(e) {
+        const base64Data = e.target.result.split(',')[1];
+        showLoader('Mengunggah dokumen ke Google Drive...');
         google.script.run
-          .withSuccessHandler(res => {
+          .withSuccessHandler(function(res) {
             hideLoader();
-            if (!res.success) { showToast(res.message, 'error'); return; }
-            showToast(res.message, 'success');
+            if (!res.success) {
+              showToast(res.message, 'error');
+              return;
+            }
             fileInput.value = '';
-            STATE.dokumenList.unshift(res.doc);
-            STATE.currentFormDocs.push(res.doc);
-            renderFormDocs(STATE.currentFormDocs);
-            openSplitDocPreview(res.doc.docId);
+            showToast('Dokumen berhasil diunggah!', 'success');
+            loadSekolahData();
           })
-          .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-          .uploadSupportingDocument(STATE.user, {
-            sekolahNo, bulanKode, jenisDokumen, fileName: file.name,
-            mimeType: file.type || 'application/octet-stream', base64Data
+          .withFailureHandler(function(err) {
+            hideLoader();
+            showToast('Gagal mengunggah: ' + err.message, 'error');
+          })
+          .uploadDokumenSekolah({
+            kodeSekolah: CURRENT_USER.kodeSekolah,
+            namaSekolah: CURRENT_USER.namaInstansi,
+            bulan: bulan,
+            jenisDokumen: jenis,
+            fileName: file.name,
+            mimeType: file.type,
+            base64Data: base64Data
           });
       };
       reader.readAsDataURL(file);
     }
 
-    function renderFormDocs(docs) {
-      const hasArkas = (docs || []).some(d => d.jenisDokumen === 'BKU Arkas (PDF)');
-      const hasManual = (docs || []).some(d => d.jenisDokumen === 'BKU Manual (Excel)');
-      const bArkas = document.getElementById('badgeReqArkas');
-      const bManual = document.getElementById('badgeReqManual');
-      bArkas.textContent = hasArkas ? '✓ BKU Arkas (PDF)' : '✗ BKU Arkas (PDF)';
-      bArkas.className = hasArkas ? 'px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold' : 'px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold';
-      bManual.textContent = hasManual ? '✓ BKU Manual (Excel)' : '✗ BKU Manual (Excel)';
-      bManual.className = hasManual ? 'px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold' : 'px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold';
-
-      const tbody = document.getElementById('formDocTableBody');
-      const pills = document.getElementById('previewQuickPills');
-      if (!docs || docs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" class="px-3 py-4 text-center text-slate-400">Belum ada dokumen bulan ini.</td></tr>`;
-        pills.innerHTML = `<span class="text-[11px] text-slate-500">Belum ada file...</span>`;
-        return;
-      }
-      tbody.innerHTML = docs.map(d => `
-        <tr class="hover:bg-sky-50/50">
-          <td class="px-3 py-2 font-extrabold text-[#0B4F9F]">${d.jenisDokumen}</td>
-          <td class="px-3 py-2 font-semibold">${d.namaFile} <span class="text-slate-400">(${d.ukuranKB} KB)</span></td>
-          <td class="px-3 py-2 text-center">
-            <div class="inline-flex items-center gap-1">
-              <button type="button" onclick="openSplitDocPreview('${d.docId}')" class="px-2.5 py-1 rounded-lg bg-[#0284C7] text-white font-extrabold hover:bg-[#0B4F9F]">Preview</button>
-              <button type="button" onclick="handleDeleteDoc('${d.docId}', true)" class="px-2 py-1 rounded-lg bg-rose-100 text-rose-700 font-bold">Hapus</button>
-            </div>
-          </td>
-        </tr>`).join('');
-      pills.innerHTML = docs.map(d => `<button type="button" onclick="openSplitDocPreview('${d.docId}')" class="px-2.5 py-1 rounded-lg bg-white border border-slate-300 hover:border-[#0B4F9F] text-[11px] font-bold text-slate-700 whitespace-nowrap">📄 ${d.jenisDokumen}</button>`).join('');
-    }
-
-    function openSplitDocPreview(docId) {
-      const doc = STATE.currentFormDocs.find(d => d.docId === docId) || STATE.dokumenList.find(d => d.docId === docId);
-      if (!doc) return;
-      document.getElementById('previewDocTitle').textContent = `${doc.jenisDokumen} — ${doc.namaFile}`;
-      const extBtn = document.getElementById('previewExternalBtn');
-      extBtn.href = doc.fileUrl;
-      extBtn.classList.remove('hidden');
-      document.getElementById('previewEmptyState').classList.add('hidden');
-      const iframe = document.getElementById('docPreviewIframe');
-      iframe.src = doc.previewUrl;
-      iframe.classList.remove('hidden');
-    }
-
-    function resetSplitDocPreview() {
-      document.getElementById('previewDocTitle').textContent = 'Pilih dokumen di sebelah kiri untuk pratinjau';
-      document.getElementById('previewExternalBtn').classList.add('hidden');
-      document.getElementById('docPreviewIframe').classList.add('hidden');
-      document.getElementById('docPreviewIframe').src = '';
-      document.getElementById('previewEmptyState').classList.remove('hidden');
-    }
-
-    function handleDeleteDoc(docId, reloadForm) {
-      if (!confirm('Hapus dokumen pendukung ini secara permanen?')) return;
+    function handleHapusDokumen(dokId) {
+      if (!confirm('Hapus dokumen ini?')) return;
+      const bulan = document.getElementById('sekolahBulanSelect').value;
       showLoader('Menghapus dokumen...');
       google.script.run
-        .withSuccessHandler(res => {
+        .withSuccessHandler(function(res) {
+          hideLoader();
+          if (!res.success) { showToast(res.message, 'error'); return; }
+          showToast('Dokumen dihapus.', 'success');
+          loadSekolahData();
+        })
+        .hapusDokumenSekolah(dokId, CURRENT_USER.kodeSekolah, CURRENT_USER.namaInstansi, bulan);
+    }
+
+    function hitungOtomatis() {
+      const val = id => parseFloat(document.getElementById('inp_' + id).value) || 0;
+      const saTunai = val('saTunai'), saBank = val('saBank'), saPajak = val('saPajakTerhutang');
+      const t1 = val('terimaBosTahap1'), t2 = val('terimaBosTahap2'), giro = val('terimaJasaGiro'), pungut = val('pungutPajak');
+      const tarik = val('tarikTunai'), nonTunai = val('belanjaNonTunai');
+      const bPeg = val('belanjaPegawai'), bBar = val('belanjaBarangJasa'), bMod = val('belanjaModal');
+      const setorPjk = val('setorPajak'), setorGiro = val('setorJasaGiro');
+
+      const totalSA = saTunai + saBank;
+      const totalTerima = t1 + t2 + giro;
+      const totalBelanja = bPeg + bBar + bMod;
+      const belanjaTunai = totalBelanja - nonTunai;
+
+      const skTunai = saTunai + tarik - belanjaTunai;
+      const skBank = saBank + totalTerima - tarik - nonTunai - setorGiro;
+      const totalSK = skTunai + skBank;
+      const sisaPajak = saPajak + pungut - setorPjk;
+
+      document.getElementById('out_totalSaldoAwal').textContent = formatRupiah(totalSA);
+      document.getElementById('out_totalPenerimaan').textContent = formatRupiah(totalTerima);
+      document.getElementById('out_totalBelanja').textContent = formatRupiah(totalBelanja);
+      document.getElementById('out_skTunai').textContent = formatRupiah(skTunai);
+      document.getElementById('out_skBank').textContent = formatRupiah(skBank);
+      document.getElementById('out_totalSaldoAkhir').textContent = formatRupiah(totalSK);
+      document.getElementById('out_sisaPajak').textContent = formatRupiah(sisaPajak);
+
+      const warnBox = document.getElementById('saldoMinusWarning');
+      if (skTunai < 0 || skBank < 0 || sisaPajak < 0) {
+        warnBox.classList.remove('hidden');
+      } else {
+        warnBox.classList.add('hidden');
+      }
+    }
+
+    function resetFormAngka() {
+      if (!confirm('Kosongkan semua angka pada form bulan ini?')) return;
+      document.querySelectorAll('.rekon-input').forEach(i => i.value = 0);
+      hitungOtomatis();
+    }
+
+    function handleSimpanRekonsiliasi(e) {
+      e.preventDefault();
+      const bulan = document.getElementById('sekolahBulanSelect').value;
+      if (!confirm(`Simpan data rekonsiliasi bulan ${bulan}?\n\nSetelah disimpan, form akan TERKUNCI OTOMATIS untuk pemeriksaan Tim Dinas.`)) return;
+
+      const getV = id => parseFloat(document.getElementById('inp_' + id).value) || 0;
+      const payload = {
+        kodeSekolah: CURRENT_USER.kodeSekolah,
+        namaSekolah: CURRENT_USER.namaInstansi,
+        kecamatan: CURRENT_USER.kecamatan,
+        jenjang: CURRENT_USER.jenjang,
+        bulan: bulan,
+        saTunai: getV('saTunai'), saBank: getV('saBank'), saPajakTerhutang: getV('saPajakTerhutang'),
+        terimaBosTahap1: getV('terimaBosTahap1'), terimaBosTahap2: getV('terimaBosTahap2'),
+        terimaJasaGiro: getV('terimaJasaGiro'), pungutPajak: getV('pungutPajak'),
+        tarikTunai: getV('tarikTunai'), belanjaNonTunai: getV('belanjaNonTunai'),
+        belanjaPegawai: getV('belanjaPegawai'), belanjaBarangJasa: getV('belanjaBarangJasa'),
+        belanjaModal: getV('belanjaModal'), setorPajak: getV('setorPajak'), setorJasaGiro: getV('setorJasaGiro')
+      };
+
+      showLoader('Menyimpan & mengunci data rekonsiliasi...');
+      google.script.run
+        .withSuccessHandler(function(res) {
           hideLoader();
           if (!res.success) { showToast(res.message, 'error'); return; }
           showToast(res.message, 'success');
-          STATE.dokumenList = STATE.dokumenList.filter(d => d.docId !== docId);
-          STATE.currentFormDocs = STATE.currentFormDocs.filter(d => d.docId !== docId);
-          if (reloadForm) {
-            renderFormDocs(STATE.currentFormDocs);
-            if (STATE.currentFormDocs.length > 0) openSplitDocPreview(STATE.currentFormDocs[0].docId);
-            else resetSplitDocPreview();
-          } else renderAllDocsTable();
+          loadSekolahData();
         })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .deleteSupportingDocument(STATE.user, docId);
-    }
-
-    function loadAdminMonitoring(showSpinner) {
-      const bulanKode = document.getElementById('monMonthSelect').value;
-      const filterKec = document.getElementById('monKecSelect').value;
-      const filterJenjang = document.getElementById('monJenjangSelect').value;
-      if (showSpinner) showLoader('Memuat Live Review bulan ' + bulanKode + '...');
-      google.script.run
-        .withSuccessHandler(rows => {
+        .withFailureHandler(function(err) {
           hideLoader();
-          STATE.monitoringRows = rows;
-          renderMonitoringRows();
+          showToast('Gagal menyimpan: ' + err.message, 'error');
         })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .getAdminMonitoringTable(STATE.user, bulanKode, filterKec, filterJenjang);
+        .simpanRekonsiliasiSekolah(payload);
     }
 
-    function renderMonitoringRows() {
-      const q = (document.getElementById('monSearchInput').value || '').toLowerCase();
-      const stFilter = document.getElementById('monStatusFilter').value;
-      const filtered = STATE.monitoringRows.filter(r => {
-        if (!r.namaSekolah.toLowerCase().includes(q)) return false;
-        if (stFilter === 'SUDAH' && !r.sudahInput) return false;
-        if (stFilter === 'BELUM' && r.sudahInput) return false;
-        if (stFilter === 'VERIFIED' && r.statusVerif !== 'TERVERIFIKASI') return false;
-        if (stFilter === 'UNVERIFIED' && r.statusVerif === 'TERVERIFIKASI') return false;
+    function openModalAjukanRevisi() {
+      const bulan = document.getElementById('sekolahBulanSelect').value;
+      document.getElementById('revModalBulanText').textContent = bulan + ' 2026';
+      document.getElementById('revAlasanInput').value = '';
+      document.getElementById('modalAjukanRevisi').classList.remove('hidden');
+    }
+
+    function submitAjukanRevisi() {
+      const bulan = document.getElementById('sekolahBulanSelect').value;
+      const alasan = document.getElementById('revAlasanInput').value.trim();
+      if (alasan.length < 5) {
+        showToast('Tuliskan alasan revisi minimal 5 karakter.', 'error');
+        return;
+      }
+      showLoader('Mengirim permohonan izin revisi...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoader();
+          closeModal('modalAjukanRevisi');
+          showToast(res.message, res.success ? 'success' : 'error');
+          if (res.success) loadSekolahData();
+        })
+        .ajukanIzinRevisiSekolah(CURRENT_USER.kodeSekolah, CURRENT_USER.namaInstansi, bulan, alasan);
+    }
+
+    function cetakBuktiSahPDF() {
+      const d = CURRENT_SEKOLAH_DATA.data;
+      if (!d || d.statusRekon !== 'TERVERIFIKASI') return;
+      const area = document.getElementById('printProofArea');
+      area.innerHTML = `
+        <div style="font-family: Arial, sans-serif; max-width: 750px; margin: auto; border: 2px solid #0f172a; padding: 28px;">
+          <div style="text-align: center; border-bottom: 3px double #0f172a; padding-bottom: 12px; margin-bottom: 18px;">
+            <h2 style="margin:0; font-size: 16px;">PEMERINTAH KABUPATEN BOALEMO</h2>
+            <h1 style="margin:4px 0; font-size: 18px;">DINAS PENDIDIKAN DAN KEBUDAYAAN</h1>
+            <p style="margin:0; font-size: 12px;">TANDA BUKTI PENGESAHAN REKONSILIASI DANA BOSP TAHUN ANGGARAN 2026</p>
+          </div>
+          <table style="width:100%; font-size: 13px; margin-bottom: 16px;">
+            <tr><td style="width:180px; padding:4px 0;">Nama Satuan Pendidikan</td><td>: <b>${d.namaSekolah}</b></td></tr>
+            <tr><td style="padding:4px 0;">Kode Akun / Kecamatan</td><td>: ${d.kodeSekolah.toUpperCase()} / Kec. ${d.kecamatan}</td></tr>
+            <tr><td style="padding:4px 0;">Periode Rekonsiliasi</td><td>: <b>Bulan ${d.bulan} 2026</b></td></tr>
+            <tr><td style="padding:4px 0;">Kode Pengesahan Sistem</td><td>: <b>${d.kodePengesahan}</b></td></tr>
+          </table>
+          <table style="width:100%; border-collapse: collapse; font-size: 13px; margin-bottom: 20px;" border="1">
+            <tr style="background:#f1f5f9;"><th style="padding:8px; text-align:left;">Uraian Ringkasan</th><th style="padding:8px; text-align:right;">Jumlah (Rp)</th></tr>
+            <tr><td style="padding:7px;">Total Saldo Awal (Tunai + Bank)</td><td style="padding:7px; text-align:right;">${formatRupiah(d.totalSaldoAwal)}</td></tr>
+            <tr><td style="padding:7px;">Total Penerimaan Bulan Ini</td><td style="padding:7px; text-align:right;">${formatRupiah(d.totalPenerimaan)}</td></tr>
+            <tr><td style="padding:7px;">Total Realisasi Belanja</td><td style="padding:7px; text-align:right;">${formatRupiah(d.totalBelanja)}</td></tr>
+            <tr><td style="padding:7px;">Saldo Akhir Kas Tunai</td><td style="padding:7px; text-align:right;">${formatRupiah(d.skTunai)}</td></tr>
+            <tr><td style="padding:7px;">Saldo Akhir Bank</td><td style="padding:7px; text-align:right;">${formatRupiah(d.skBank)}</td></tr>
+            <tr style="background:#f8fafc; font-weight:bold;"><td style="padding:8px;">TOTAL SALDO AKHIR</td><td style="padding:8px; text-align:right;">${formatRupiah(d.totalSaldoAkhir)}</td></tr>
+          </table>
+          <div style="text-align: right; font-size: 12px; margin-top: 24px;">
+            <p style="margin:2px 0;">Diverifikasi &amp; Disahkan Secara Elektronik pada ${d.verifikatorTgl}</p>
+            <p style="margin:2px 0;">Petugas Verifikator Dinas Pendidikan Kab. Boalemo,</p>
+            <br><br>
+            <p style="margin:2px 0; font-weight:bold; text-decoration:underline;">${d.verifikatorNama}</p>
+          </div>
+        </div>
+      `;
+      window.print();
+    }
+
+    // ==================== FUNGSI ADMIN KECAMATAN & SUPER ADMIN ====================
+    function loadAdminDashboard() {
+      const bulan = document.getElementById('adminBulanSelect').value;
+      const kecScope = CURRENT_USER.role === 'ADMIN_KEC' ? CURRENT_USER.kecamatan : 'ALL';
+
+      showLoader('Memuat data monitoring ' + bulan + '...');
+      google.script.run
+        .withSuccessHandler(function(res) {
+          hideLoader();
+          ADMIN_DASHBOARD_CACHE = res;
+          document.getElementById('statTotalSekolah').textContent = res.summary.totalSekolah;
+          document.getElementById('statBelumInput').textContent = res.summary.belumInput;
+          document.getElementById('statMenungguRekon').textContent = res.summary.menungguRekon;
+          document.getElementById('statSedangDirekon').textContent = res.summary.sedangDirekon;
+          document.getElementById('statTerverifikasi').textContent = res.summary.terverifikasi;
+          document.getElementById('statPengajuanRevisi').textContent = res.summary.pengajuanRevisiCount;
+          document.getElementById('badgeTabRevisi').textContent = res.summary.pengajuanRevisiCount;
+
+          renderAdminTable();
+          renderRevisiQueueTable(res.daftarPengajuanRevisi);
+          renderAuditLogTable(res.recentLogs);
+        })
+        .withFailureHandler(function(err) {
+          hideLoader();
+          showToast('Gagal memuat dashboard: ' + err.message, 'error');
+        })
+        .getDashboardMonitoringData(bulan, kecScope);
+    }
+
+    function switchAdminTab(tabName) {
+      ['adminTabSekolah','adminTabRevisi','adminTabLog'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['tabBtnSekolah','tabBtnRevisi','tabBtnLog'].forEach(id => {
+        document.getElementById(id).className = 'px-4 py-2 rounded-xl text-xs font-extrabold bg-white text-slate-700 border border-slate-300';
+      });
+
+      if (tabName === 'TAB_SEKOLAH') {
+        document.getElementById('adminTabSekolah').classList.remove('hidden');
+        document.getElementById('tabBtnSekolah').className = 'px-4 py-2 rounded-xl text-xs font-extrabold bg-blue-900 text-white shadow-xs';
+      } else if (tabName === 'TAB_REVISI') {
+        document.getElementById('adminTabRevisi').classList.remove('hidden');
+        document.getElementById('tabBtnRevisi').className = 'px-4 py-2 rounded-xl text-xs font-extrabold bg-purple-800 text-white shadow-xs';
+      } else {
+        document.getElementById('adminTabLog').classList.remove('hidden');
+        document.getElementById('tabBtnLog').className = 'px-4 py-2 rounded-xl text-xs font-extrabold bg-slate-800 text-white shadow-xs';
+      }
+    }
+
+    function renderAdminTable() {
+      if (!ADMIN_DASHBOARD_CACHE) return;
+      const kec = document.getElementById('adminKecamatanSelect').value;
+      const stFilter = document.getElementById('adminStatusFilter').value;
+      const q = document.getElementById('adminSearchInput').value.trim().toLowerCase();
+
+      const filtered = ADMIN_DASHBOARD_CACHE.monitoringRows.filter(row => {
+        if (kec !== 'SEMUA' && row.kecamatan.toLowerCase() !== kec.toLowerCase()) return false;
+        if (stFilter !== 'SEMUA' && row.statusTampil !== stFilter) return false;
+        if (q && !row.namaSekolah.toLowerCase().includes(q) && !row.kodeSekolah.toLowerCase().includes(q)) return false;
         return true;
       });
 
-      let countInput = 0, countBelum = 0, countVerified = 0, totBKU = 0, totPajak = 0;
-      filtered.forEach(r => {
-        if (r.sudahInput) countInput++; else countBelum++;
-        if (r.statusVerif === 'TERVERIFIKASI') countVerified++;
-        totBKU += r.totalBKU; totPajak += r.totalPajak;
-      });
+      const tbody = document.getElementById('adminSekolahTableBody');
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="py-6 text-center text-slate-400">Tidak ada sekolah yang sesuai filter.</td></tr>';
+        return;
+      }
 
-      document.getElementById('kpiSudahInput').textContent = `${countInput} / ${filtered.length} Sekolah`;
-      document.getElementById('kpiBelumInput').textContent = `${countBelum} Sekolah`;
-      document.getElementById('kpiTerverifikasi').textContent = `${countVerified} Sekolah`;
-      document.getElementById('kpiSaldoBKU').textContent = formatRp(totBKU);
-      document.getElementById('kpiTotalPajak').textContent = formatRp(totPajak);
+      tbody.innerHTML = filtered.map((r, idx) => {
+        let badge = '';
+        if (r.statusTampil === 'BELUM_INPUT') badge = '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">Belum Input</span>';
+        else if (r.statusTampil === 'MENUNGGU_REKON') badge = '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800">Menunggu Rekon</span>';
+        else if (r.statusTampil === 'SEDANG_DIREKON') badge = `<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800"><i class="fa-solid fa-spinner fa-spin mr-1"></i>Diperiksa: ${r.activeReviewerValid}</span>`;
+        else badge = '<span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800"><i class="fa-solid fa-check mr-1"></i>Sudah Direkon</span>';
 
-      const bulanKode = document.getElementById('monMonthSelect').value;
-      document.getElementById('monitoringTableBody').innerHTML = filtered.map(r => {
-        const statusInputBadge = r.sudahInput
-          ? `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">✓ Sudah Mengisi</span>`
-          : `<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 font-extrabold text-[11px]">✗ Belum Mengisi</span>`;
-        const isVerif = r.statusVerif === 'TERVERIFIKASI';
-        const verifBtn = isVerif
-          ? `<button onclick="quickToggleVerify(${r.sekolahNo}, 'BELUM')" class="px-2.5 py-1 rounded-lg bg-emerald-600 text-white font-extrabold text-[11px]">☑ Terverifikasi</button>`
-          : `<button onclick="quickToggleVerify(${r.sekolahNo}, 'TERVERIFIKASI')" class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-900 border border-amber-300 font-extrabold text-[11px]">☐ Centang Valid</button>`;
-        const isOpen = r.statusAkses === 'TERBUKA';
-        const aksesBtn = isOpen
-          ? `<button onclick="handleToggleAccess(${r.sekolahNo}, 'TERKUNCI')" class="px-2 py-1 rounded-lg bg-sky-100 text-[#0B4F9F] font-bold text-[11px]">Terbuka</button>`
-          : `<button onclick="handleToggleAccess(${r.sekolahNo}, 'TERBUKA')" class="px-2 py-1 rounded-lg bg-slate-200 text-slate-700 font-bold text-[11px]">Terkunci</button>`;
+        const belanja = r.rekonData ? formatRupiah(r.rekonData.totalBelanja) : '-';
+        const saldoAkhir = r.rekonData ? formatRupiah(r.rekonData.totalSaldoAkhir) : '-';
+        const verifName = r.rekonData && r.rekonData.verifikatorNama ? r.rekonData.verifikatorNama : (r.activeReviewerValid || '-');
+
+        // Tombol Audit HANYA untuk SUPER_ADMIN (ADMIN_KEC bersifat Read-Only pemantauan)
+        let actionCell = '<span class="text-[11px] text-slate-400 italic">Pemantauan</span>';
+        if (CURRENT_USER.role === 'SUPER_ADMIN') {
+          if (r.rekonData) {
+            actionCell = `<button type="button" onclick="openModalVerifikasi('${r.kodeSekolah}')" class="px-3 py-1.5 bg-blue-900 hover:bg-blue-800 text-white rounded-lg font-bold shadow-xs"><i class="fa-solid fa-magnifying-glass-dollar mr-1"></i>Periksa / Rekon</button>`;
+          } else {
+            actionCell = '<span class="text-[11px] text-slate-400">-</span>';
+          }
+        }
+
         return `
-          <tr class="hover:bg-sky-50/50">
-            <td class="px-3 py-2.5 font-bold">${r.sekolahNo}</td>
-            <td class="px-3 py-2.5"><p class="font-extrabold text-slate-900">${r.namaSekolah}</p><p class="text-[11px] text-slate-500">${r.kecamatan}</p></td>
-            <td class="px-3 py-2.5 text-center">${statusInputBadge}</td>
-            <td class="px-3 py-2.5 text-center">${verifBtn}</td>
-            <td class="px-3 py-2.5 text-center font-extrabold text-[#0284C7]">${r.jmlDokumen} File</td>
-            <td class="px-3 py-2.5 text-right font-extrabold text-[#0B4F9F]">${formatRp(r.totalBKU)}</td>
-            <td class="px-3 py-2.5 text-right font-bold text-slate-700">${formatRp(r.totalBank)}</td>
-            <td class="px-3 py-2.5 text-center">${aksesBtn}</td>
-            <td class="px-3 py-2.5 text-center">
-              <div class="inline-flex items-center gap-1">
-                <button onclick="openSchoolFromAdmin(${r.sekolahNo}, '${bulanKode}')" class="px-2.5 py-1 rounded-lg bg-[#0B4F9F] text-white font-extrabold hover:bg-[#0284C7]">Audit / Preview</button>
-                <button onclick="downloadExcelPerSekolah(${r.sekolahNo})" class="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold">XLSX</button>
-              </div>
+          <tr class="hover:bg-slate-50">
+            <td class="py-3 px-4 font-bold text-slate-500">${idx + 1}</td>
+            <td class="py-3 px-4">
+              <div class="font-extrabold text-slate-900">${r.namaSekolah}</div>
+              <div class="text-[11px] text-slate-500">Akun: <code>${r.kodeSekolah}</code> • ${r.jenjang}</div>
             </td>
-          </tr>`;
+            <td class="py-3 px-4 font-semibold text-slate-700">${r.kecamatan}</td>
+            <td class="py-3 px-4 text-right font-bold text-slate-800">${belanja}</td>
+            <td class="py-3 px-4 text-right font-extrabold text-blue-950">${saldoAkhir}</td>
+            <td class="py-3 px-4">${badge}</td>
+            <td class="py-3 px-4 font-semibold text-slate-600">${verifName}</td>
+            <td class="py-3 px-4 text-right">${actionCell}</td>
+          </tr>
+        `;
       }).join('');
     }
 
-    function quickToggleVerify(sekolahNo, nextStatus) {
-      const bulanKode = document.getElementById('monMonthSelect').value;
-      google.script.run
-        .withSuccessHandler(res => {
-          if (!res.success) { showToast(res.message, 'error'); return; }
-          const row = STATE.monitoringRows.find(r => r.sekolahNo === sekolahNo);
-          if (row) row.statusVerif = nextStatus;
-          renderMonitoringRows();
-          showToast(res.message, 'success');
-        })
-        .withFailureHandler(err => showToast(err.message, 'error'))
-        .toggleVerifySchoolMonth(STATE.user, sekolahNo, bulanKode, nextStatus);
-    }
-
-    function openSchoolFromAdmin(sekolahNo, bulanKode) {
-      document.getElementById('adminSchoolSelect').value = sekolahNo;
-      document.getElementById('monthSelect').value = bulanKode;
-      switchTab('panelInputRekon');
-      loadSchoolMonthForm();
-    }
-
-    function handleToggleAccess(sekolahNo, newStatus) {
-      const bulanKode = document.getElementById('monMonthSelect').value;
-      google.script.run
-        .withSuccessHandler(res => {
-          showToast(res.message, res.success ? 'success' : 'error');
-          const row = STATE.monitoringRows.find(r => r.sekolahNo === sekolahNo);
-          if (row && res.success) row.statusAkses = newStatus;
-          renderMonitoringRows();
-        })
-        .withFailureHandler(err => showToast(err.message, 'error'))
-        .toggleSchoolAccess(STATE.user, sekolahNo, bulanKode, newStatus);
-    }
-
-    function handleBulkAccess(newStatus) {
-      const bulanKode = document.getElementById('monMonthSelect').value;
-      const filterKec = document.getElementById('monKecSelect').value;
-      if (!confirm(`Ubah akses seluruh sekolah (${filterKec}) bulan ${bulanKode} menjadi ${newStatus}?`)) return;
-      showLoader('Memperbarui akses massal...');
-      google.script.run
-        .withSuccessHandler(res => {
-          hideLoader();
-          showToast(res.message, res.success ? 'success' : 'error');
-          loadAdminMonitoring(false);
-        })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .bulkToggleAccess(STATE.user, filterKec, bulanKode, newStatus);
-    }
-
-    function downloadExcelPerSekolah(sekolahNo) {
-      showLoader('Menyusun Excel (.xlsx) 12 Sheet (JAN–DES)...');
-      google.script.run
-        .withSuccessHandler(res => { hideLoader(); triggerBase64Download(res.base64, res.fileName); showToast('Excel "' + res.fileName + '" diunduh!'); })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .exportExcelWorkbook(STATE.user, 'PER_SEKOLAH', sekolahNo, null);
-    }
-
-    function downloadExcelWilayah() {
-      const filterKec = document.getElementById('monKecSelect').value;
-      showLoader('Menyusun Rekap Excel (.xlsx) 12 Sheet (JAN–DES)...');
-      google.script.run
-        .withSuccessHandler(res => { hideLoader(); triggerBase64Download(res.base64, res.fileName); showToast('Excel "' + res.fileName + '" diunduh!'); })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .exportExcelWorkbook(STATE.user, 'REKAP_WILAYAH', null, filterKec);
-    }
-
-    function triggerBase64Download(base64, fileName) {
-      const link = document.createElement('a');
-      link.href = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + base64;
-      link.download = fileName;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-
-    function renderAllDocsTable() {
-      const q = (document.getElementById('docSearchInput').value || '').toLowerCase();
-      const filtered = STATE.dokumenList.filter(d => d.namaSekolah.toLowerCase().includes(q) || d.namaFile.toLowerCase().includes(q) || d.jenisDokumen.toLowerCase().includes(q));
-      const tbody = document.getElementById('allDocsTableBody');
-      if (filtered.length === 0) { tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-6 text-center text-slate-400">Tidak ada dokumen ditemukan.</td></tr>`; return; }
-      tbody.innerHTML = filtered.map(d => `
-        <tr class="hover:bg-slate-50">
-          <td class="px-3 py-2.5 font-extrabold text-[#0B4F9F]">${d.bulanKode}</td>
-          <td class="px-3 py-2.5 font-bold">${d.namaSekolah}</td>
-          <td class="px-3 py-2.5 text-slate-600">${d.kecamatan}</td>
-          <td class="px-3 py-2.5 text-[#0284C7] font-bold">${d.jenisDokumen}</td>
-          <td class="px-3 py-2.5">${d.namaFile} <span class="text-slate-400">(${d.ukuranKB} KB)</span></td>
-          <td class="px-3 py-2.5 text-slate-500">${d.uploadedAt}</td>
-          <td class="px-3 py-2.5 text-center">
-            <div class="inline-flex items-center gap-1.5">
-              <button onclick="openDocInSplitFromArchive(${d.sekolahNo}, '${d.bulanKode}', '${d.docId}')" class="px-2.5 py-1 rounded-lg bg-[#0B4F9F] text-white font-bold">Preview</button>
-              <button onclick="handleDeleteDoc('${d.docId}', false)" class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 font-bold">Hapus</button>
-            </div>
+    function renderRevisiQueueTable(list) {
+      const tbody = document.getElementById('adminRevisiTableBody');
+      if (!list || list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Tidak ada permohonan izin revisi yang menunggu persetujuan.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map(item => `
+        <tr>
+          <td class="py-3 px-4 text-slate-600">${item.tglAjuan}</td>
+          <td class="py-3 px-4"><b class="text-slate-900">${item.namaSekolah}</b><br><span class="text-[11px] text-slate-500">Kec. ${item.kecamatan}</span></td>
+          <td class="py-3 px-4 font-extrabold text-blue-900">${item.bulan} 2026</td>
+          <td class="py-3 px-4 text-slate-700">${item.alasan}</td>
+          <td class="py-3 px-4 text-right space-x-1">
+            <button type="button" onclick="handleKeputusanRevisi('${item.kodeSekolah}','${item.bulan}','IZINKAN')" class="px-3 py-1.5 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-lg"><i class="fa-solid fa-lock-open mr-1"></i>Izinkan &amp; Buka Kunci</button>
+            <button type="button" onclick="handleKeputusanRevisi('${item.kodeSekolah}','${item.bulan}','TOLAK')" class="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-lg">Tolak</button>
           </td>
-        </tr>`).join('');
+        </tr>
+      `).join('');
     }
 
-    function openDocInSplitFromArchive(sekolahNo, bulanKode, docId) {
-      if (STATE.user.role !== 'SEKOLAH') document.getElementById('adminSchoolSelect').value = sekolahNo;
-      document.getElementById('monthSelect').value = bulanKode;
-      switchTab('panelInputRekon');
-      loadSchoolMonthForm();
-      setTimeout(() => openSplitDocPreview(docId), 800);
-    }
+    function handleKeputusanRevisi(kodeSekolah, bulan, keputusan) {
+      const catatan = prompt(keputusan === 'IZINKAN'
+        ? 'Tambahkan catatan singkat untuk sekolah (opsional):'
+        : 'Tuliskan alasan penolakan revisi:');
+      if (catatan === null) return;
 
-    function renderUsersTable() {
-      const q = (document.getElementById('userSearchInput').value || '').toLowerCase();
-      const filtered = STATE.usersList.filter(u => u.namaLengkap.toLowerCase().includes(q) || u.username.toLowerCase().includes(q) || u.kecamatan.toLowerCase().includes(q));
-      document.getElementById('usersTableBody').innerHTML = filtered.map(u => `
-        <tr class="hover:bg-slate-50">
-          <td class="px-3 py-2.5 font-extrabold">${u.role}</td>
-          <td class="px-3 py-2.5 font-bold text-slate-900">${u.namaLengkap}</td>
-          <td class="px-3 py-2.5 text-slate-600">${u.kecamatan}</td>
-          <td class="px-3 py-2.5 font-mono text-[#0B4F9F] font-bold">${u.username}</td>
-          <td class="px-3 py-2.5 font-mono text-slate-700">${u.password}</td>
-          <td class="px-3 py-2.5"><span class="px-2 py-0.5 rounded-full text-[11px] font-bold ${u.statusAkun === 'AKTIF' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'}">${u.statusAkun}</span></td>
-          <td class="px-3 py-2.5 text-center"><div class="inline-flex items-center gap-1.5"><button onclick="openEditUserModal('${u.userId}')" class="px-2.5 py-1 rounded-lg bg-blue-100 text-blue-800 font-bold">Edit</button><button onclick="deactivateUser('${u.userId}')" class="px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700 font-bold">Nonaktifkan</button></div></td>
-        </tr>`).join('');
-    }
-
-    function openEditUserModal(userId) {
-      const u = STATE.usersList.find(x => x.userId === userId);
-      if (!u) return;
-      document.getElementById('editUserId').value = u.userId;
-      document.getElementById('editUserNama').value = u.namaLengkap;
-      document.getElementById('editUserUsername').value = u.username;
-      document.getElementById('editUserPassword').value = u.password;
-      document.getElementById('editUserStatus').value = u.statusAkun;
-      document.getElementById('editUserModal').classList.remove('hidden');
-    }
-
-    function closeEditUserModal() { document.getElementById('editUserModal').classList.add('hidden'); }
-
-    function submitEditUser() {
-      const payload = {
-        userId: document.getElementById('editUserId').value,
-        namaLengkap: document.getElementById('editUserNama').value,
-        username: document.getElementById('editUserUsername').value,
-        password: document.getElementById('editUserPassword').value,
-        statusAkun: document.getElementById('editUserStatus').value
-      };
-      showLoader('Menyimpan perubahan akun...');
+      showLoader('Memproses keputusan izin revisi...');
       google.script.run
-        .withSuccessHandler(res => {
+        .withSuccessHandler(function(res) {
           hideLoader();
           showToast(res.message, res.success ? 'success' : 'error');
-          if (res.success) {
-            const idx = STATE.usersList.findIndex(x => x.userId === payload.userId);
-            if (idx > -1) Object.assign(STATE.usersList[idx], payload);
-            closeEditUserModal();
-            renderUsersTable();
-          }
+          loadAdminDashboard();
         })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .updateUserAccount(STATE.user, payload);
+        .prosesIzinRevisiSuperAdmin(kodeSekolah, bulan, keputusan, CURRENT_USER.petugasName, catatan);
     }
 
-    function deactivateUser(userId) {
-      if (!confirm('Nonaktifkan akses login akun ini?')) return;
-      showLoader('Menonaktifkan akun...');
+    function renderAuditLogTable(logs) {
+      const tbody = document.getElementById('adminLogTableBody');
+      if (!logs || logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="py-6 text-center text-slate-400">Belum ada aktivitas tercatat.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = logs.map(l => `
+        <tr>
+          <td class="py-2.5 px-4 text-slate-500 whitespace-nowrap">${l.waktu}</td>
+          <td class="py-2.5 px-4"><span class="px-2 py-0.5 rounded bg-slate-100 font-bold text-slate-700">${l.role}</span></td>
+          <td class="py-2.5 px-4 font-bold text-slate-800">${l.actor}</td>
+          <td class="py-2.5 px-4 text-slate-700">${l.namaSekolah} (${l.bulan})</td>
+          <td class="py-2.5 px-4 font-extrabold text-blue-900">${l.aksi}</td>
+          <td class="py-2.5 px-4 text-slate-600">${l.detail}</td>
+        </tr>
+      `).join('');
+    }
+
+    // ==================== MEJA AUDIT / VERIFIKASI SUPER ADMIN ====================
+    function openModalVerifikasi(kodeSekolah) {
+      const target = ADMIN_DASHBOARD_CACHE.monitoringRows.find(r => r.kodeSekolah === kodeSekolah);
+      if (!target || !target.rekonData) return;
+
+      ACTIVE_VERIF_TARGET = target;
+      const d = target.rekonData;
+
       google.script.run
-        .withSuccessHandler(res => {
+        .withSuccessHandler(function(claimRes) {
+          const warnEl = document.getElementById('verifWarningConcurrent');
+          if (claimRes && claimRes.warning) {
+            warnEl.classList.remove('hidden');
+            warnEl.textContent = claimRes.message;
+          } else {
+            warnEl.classList.add('hidden');
+          }
+        })
+        .claimReviewSekolah(target.kodeSekolah, target.bulan, CURRENT_USER.petugasName);
+
+      document.getElementById('verifModalTitle').textContent = `${target.namaSekolah} (${target.kodeSekolah}) — Bulan ${target.bulan} 2026`;
+      document.getElementById('verifPetugasLabel').textContent = CURRENT_USER.petugasName;
+      document.getElementById('verifCatatanInput').value = d.catatanVerifikator || '';
+
+      document.getElementById('verifRincianBox').innerHTML = `
+        <div class="grid grid-cols-2 gap-2">
+          <div class="p-2.5 bg-slate-50 rounded-xl border"><span>Saldo Awal Tunai:</span><b class="block text-sm">${formatRupiah(d.saTunai)}</b></div>
+          <div class="p-2.5 bg-slate-50 rounded-xl border"><span>Saldo Awal Bank:</span><b class="block text-sm">${formatRupiah(d.saBank)}</b></div>
+          <div class="p-2.5 bg-emerald-50 rounded-xl border border-emerald-200"><span>Total Penerimaan:</span><b class="block text-sm text-emerald-800">${formatRupiah(d.totalPenerimaan)}</b></div>
+          <div class="p-2.5 bg-rose-50 rounded-xl border border-rose-200"><span>Total Belanja:</span><b class="block text-sm text-rose-800">${formatRupiah(d.totalBelanja)}</b></div>
+          <div class="p-2.5 bg-slate-50 rounded-xl border"><span>Belanja Pegawai:</span><b class="block">${formatRupiah(d.belanjaPegawai)}</b></div>
+          <div class="p-2.5 bg-slate-50 rounded-xl border"><span>Belanja Barang &amp; Jasa:</span><b class="block">${formatRupiah(d.belanjaBarangJasa)}</b></div>
+          <div class="p-2.5 bg-slate-50 rounded-xl border"><span>Belanja Modal:</span><b class="block">${formatRupiah(d.belanjaModal)}</b></div>
+          <div class="p-2.5 bg-amber-50 rounded-xl border border-amber-200"><span>Sisa Pajak Terhutang:</span><b class="block text-amber-900">${formatRupiah(d.sisaPajak)}</b></div>
+          <div class="p-2.5 bg-sky-50 rounded-xl border border-sky-200"><span>Saldo Akhir Kas Tunai:</span><b class="block text-sm text-blue-950">${formatRupiah(d.skTunai)}</b></div>
+          <div class="p-2.5 bg-sky-50 rounded-xl border border-sky-200"><span>Saldo Akhir Bank:</span><b class="block text-sm text-blue-950">${formatRupiah(d.skBank)}</b></div>
+        </div>
+        <div class="p-3 bg-blue-950 text-white rounded-xl flex justify-between items-center">
+          <span class="font-bold">TOTAL SALDO AKHIR:</span>
+          <span class="text-base font-extrabold text-amber-300">${formatRupiah(d.totalSaldoAkhir)}</span>
+        </div>
+      `;
+
+      const docBtns = document.getElementById('verifDocButtons');
+      if (!target.dokumenList || target.dokumenList.length === 0) {
+        docBtns.innerHTML = '<span class="text-xs text-rose-400 font-bold">Sekolah belum mengunggah dokumen pendukung.</span>';
+      } else {
+        docBtns.innerHTML = target.dokumenList.map(doc => `
+          <button type="button" onclick="setVerifPreview('${doc.previewUrl}')" class="px-2.5 py-1 bg-blue-800 hover:bg-blue-700 text-white text-[11px] font-bold rounded-lg">
+            <i class="fa-solid fa-file-lines mr-1"></i>${doc.jenis}
+          </button>
+        `).join('');
+        setVerifPreview(target.dokumenList[0].previewUrl);
+      }
+
+      document.getElementById('modalVerifikasiSuperAdmin').classList.remove('hidden');
+    }
+
+    function setVerifPreview(url) {
+      document.getElementById('verifDocPreviewFrame').innerHTML = `<iframe src="${url}" class="w-full h-full border-0 bg-white"></iframe>`;
+    }
+
+    function submitVerifikasiSuperAdmin(sahkanSekarang) {
+      if (!ACTIVE_VERIF_TARGET) return;
+      const catatan = document.getElementById('verifCatatanInput').value.trim();
+
+      if (sahkanSekarang && !confirm(`Sahkan rekonsiliasi ${ACTIVE_VERIF_TARGET.namaSekolah} bulan ${ACTIVE_VERIF_TARGET.bulan} atas nama petugas ${CURRENT_USER.petugasName}?`)) {
+        return;
+      }
+
+      showLoader(sahkanSekarang ? 'Mensahkan rekonsiliasi sekolah...' : 'Menyimpan catatan temuan...');
+      google.script.run
+        .withSuccessHandler(function(res) {
           hideLoader();
+          closeModal('modalVerifikasiSuperAdmin');
           showToast(res.message, res.success ? 'success' : 'error');
-          if (res.success) {
-            const idx = STATE.usersList.findIndex(x => x.userId === userId);
-            if (idx > -1) STATE.usersList[idx].statusAkun = 'NONAKTIF';
-            renderUsersTable();
-          }
+          loadAdminDashboard();
         })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .resetUserPasswordOrStatus(STATE.user, userId, 'NONAKTIF');
+        .verifikasiRekonsiliasiSuperAdmin(
+          ACTIVE_VERIF_TARGET.kodeSekolah,
+          ACTIVE_VERIF_TARGET.bulan,
+          CURRENT_USER.petugasName,
+          catatan,
+          sahkanSekarang
+        );
     }
 
-    function loadAuditLogTable(showSpinner) {
-      if (showSpinner) showLoader('Memuat Audit Log...');
+    // ==================== DOWNLOAD EXCEL FORMAT LAMPIRAN BERITA ACARA REKONSILIASI ====================
+    function handleDownloadExcelBA() {
+      const bulan = document.getElementById('adminBulanSelect').value;
+      const kec = document.getElementById('adminKecamatanSelect').value;
+
+      showLoader('Menyusun Excel Format Lampiran BA Rekonsiliasi...');
       google.script.run
-        .withSuccessHandler(logs => { hideLoader(); STATE.auditLogsCache = logs; renderAuditLogs(logs); })
-        .withFailureHandler(err => { hideLoader(); showToast(err.message, 'error'); })
-        .getAuditLogs(STATE.user);
+        .withSuccessHandler(function(res) {
+          hideLoader();
+          if (!res.success || !res.rows) {
+            showToast('Gagal mengambil data laporan.', 'error');
+            return;
+          }
+
+          const aoa = [
+            ['LAMPIRAN BERITA ACARA REKONSILIASI DANA BOSP TAHUN ANGGARAN ' + res.tahun],
+            ['DINAS PENDIDIKAN DAN KEBUDAYAAN KABUPATEN BOALEMO'],
+            ['PERIODE BULAN: ' + res.bulan.toUpperCase() + ' ' + res.tahun + ' | WILAYAH: ' + res.kecamatan.toUpperCase()],
+            [],
+            [
+              'No', 'Kode Akun', 'Nama Satuan Pendidikan', 'Kecamatan', 'Jenjang',
+              'Saldo Awal Tunai', 'Saldo Awal Bank', 'Total Saldo Awal', 'Utang Pajak Awal',
+              'Penerimaan Tahap I', 'Penerimaan Tahap II', 'Jasa Giro / Bunga', 'Total Penerimaan', 'Pungutan Pajak',
+              'Penarikan Tunai', 'Belanja Non-Tunai (CMS)',
+              'Belanja Pegawai', 'Belanja Barang & Jasa', 'Belanja Modal', 'Total Realisasi Belanja',
+              'Setoran Pajak', 'Setoran Jasa Giro',
+              'Saldo Akhir Tunai', 'Saldo Akhir Bank', 'Total Saldo Akhir', 'Sisa Pajak Terhutang',
+              'Status Rekonsiliasi', 'Petugas Verifikator', 'Kode Pengesahan'
+            ]
+          ];
+
+          res.rows.forEach(r => {
+            aoa.push([
+              r.no, r.kodeSekolah, r.namaSekolah, r.kecamatan, r.jenjang,
+              r.saTunai, r.saBank, r.totalSaldoAwal, r.saPajak,
+              r.terimaTahap1, r.terimaTahap2, r.jasaGiro, r.totalPenerimaan, r.pungutPajak,
+              r.tarikTunai, r.belanjaNonTunai,
+              r.belanjaPegawai, r.belanjaBarangJasa, r.belanjaModal, r.totalBelanja,
+              r.setorPajak, r.setorJasaGiro,
+              r.skTunai, r.skBank, r.totalSaldoAkhir, r.sisaPajak,
+              r.statusRekon, r.verifikator, r.kodeSah
+            ]);
+          });
+
+          const wb = XLSX.utils.book_new();
+          const ws = XLSX.utils.aoa_to_sheet(aoa);
+          XLSX.utils.book_append_sheet(wb, ws, 'Lampiran_BA_Rekon');
+          XLSX.writeFile(wb, `Lampiran_BA_Rekonsiliasi_BOS_${res.bulan}_${res.tahun}_${res.kecamatan}.xlsx`);
+          showToast('File Excel Lampiran BA Rekonsiliasi berhasil diunduh!', 'success');
+        })
+        .withFailureHandler(function(err) {
+          hideLoader();
+          showToast('Gagal mengunduh Excel: ' + err.message, 'error');
+        })
+        .generateExcelLampiranBARekon(bulan, kec);
     }
 
-    function renderAuditLogs(logs) {
-      document.getElementById('auditTableBody').innerHTML = logs.map(l => `
-        <tr class="hover:bg-slate-50">
-          <td class="px-3 py-2 text-slate-500">${l.waktu}</td>
-          <td class="px-3 py-2 font-bold">${l.user}</td>
-          <td class="px-3 py-2">${l.role}</td>
-          <td class="px-3 py-2 font-extrabold text-[#0B4F9F]">${l.aksi}</td>
-          <td class="px-3 py-2 font-semibold">${l.target}</td>
-          <td class="px-3 py-2 text-slate-600">${l.detail}</td>
-        </tr>`).join('');
+    // ==================== HELPER UI ====================
+    function formatRupiah(num) {
+      return 'Rp ' + Number(num || 0).toLocaleString('id-ID', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+    }
+    function showLoader(text) {
+      document.getElementById('loaderText').textContent = text || 'Memproses...';
+      document.getElementById('globalLoader').classList.remove('hidden');
+    }
+    function hideLoader() {
+      document.getElementById('globalLoader').classList.add('hidden');
+    }
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+    function showToast(msg, type) {
+      const box = document.getElementById('toastBox');
+      const el = document.createElement('div');
+      const bg = type === 'error' ? 'bg-rose-700' : 'bg-emerald-700';
+      el.className = `${bg} text-white px-4 py-3 rounded-xl shadow-lg text-xs font-bold flex items-center gap-2 transition`;
+      el.innerHTML = `<i class="fa-solid ${type === 'error' ? 'fa-circle-exclamation' : 'fa-circle-check'}"></i><span>${msg}</span>`;
+      box.appendChild(el);
+      setTimeout(() => el.remove(), 4500);
     }
   </script>
 </body>
